@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Leak due to Closure</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .code-box {
+            background-color: #f8f8f8;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            font-size: 14px;
+            overflow-x: auto;
+        }
+        
+        .memory-visual {
+            margin: 30px 0;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .memory-container {
+            width: 100%;
+            height: 300px;
+            border: 1px solid #ddd;
+            position: relative;
+            background-color: #f9f9f9;
+            overflow: hidden;
+        }
+        
+        .memory-object {
+            position: absolute;
+            border-radius: 5px;
+            padding: 10px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .function {
+            background-color: #4285f4;
+            color: white;
+            width: 150px;
+        }
+        
+        .large-data {
+            background-color: #ea4335;
+            color: white;
+            width: 200px;
+        }
+        
+        .event-listener {
+            background-color: #34a853;
+            color: white;
+            width: 150px;
+        }
+        
+        .button-element {
+            background-color: #fbbc05;
+            color: black;
+            width: 120px;
+        }
+        
+        .arrow {
+            position: absolute;
+            height: 2px;
+            background-color: #666;
+            transform-origin: 0 0;
+            z-index: 10;
+        }
+        
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: -6px;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 5px 0 5px 8px;
+            border-color: transparent transparent transparent #666;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .button {
+            padding: 10px 15px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .button:hover {
+            background-color: #3367d6;
+        }
+        
+        .button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .explanation {
+            background-color: #e8f4fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        
+        .console {
+            background-color: #2d2d2d;
+            color: #ffffff;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            height: 150px;
+            overflow-y: auto;
+        }
+        
+        .console-log {
+            margin: 5px 0;
+            word-break: break-all;
+        }
+        
+        .memory-usage {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .memory-label {
+            min-width: 100px;
+        }
+        
+        .memory-bar-container {
+            flex-grow: 1;
+            height: 20px;
+            background-color: #eee;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .memory-bar {
+            height: 100%;
+            background-color: #4285f4;
+            width: 0%;
+            transition: width 0.5s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+        
+        .solution {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f1f8e9;
+            border-left: 4px solid #7cb342;
+        }
+        
+        .highlight {
+            color: #ea4335;
+            font-weight: bold;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Memory Leak due to Closure</h1>
+        
+        <div class="code-box">function attachHandler() {
+    const largeData = new Array(1000000).fill('data');
+    document.getElementById('btn').addEventListener('click', function() {
+        console.log(largeData[0]);
+    });
+}
+attachHandler();</div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #4285f4;"></div>
+                <span>Function</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ea4335;"></div>
+                <span>Large Data Array</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #34a853;"></div>
+                <span>Event Listener</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #fbbc05;"></div>
+                <span>Button Element</span>
+            </div>
+        </div>
+        
+        <div class="memory-usage">
+            <div class="memory-label">Memory:</div>
+            <div class="memory-bar-container">
+                <div class="memory-bar" id="memory-bar">0.5 MB</div>
+            </div>
+        </div>
+        
+        <div class="memory-visual">
+            <div class="memory-container" id="memory-container">
+                <!-- Objects will be added here by JavaScript -->
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="button" id="step1">1. Initial Setup</button>
+            <button class="button" id="step2" disabled>2. Create Large Array</button>
+            <button class="button" id="step3" disabled>3. Add Event Listener</button>
+            <button class="button" id="step4" disabled>4. Function Ends</button>
+            <button class="button" id="step5" disabled>5. Garbage Collection</button>
+            <button class="button" id="reset" disabled>Reset</button>
+        </div>
+        
+        <div class="console" id="console">
+            <div class="console-log">// Console output will appear here</div>
+        </div>
+        
+        <div class="explanation" id="explanation">
+            <h3>Memory Leak Problem:</h3>
+            <p>This visualization shows how closures can cause memory leaks. Follow the steps to see how the large array remains in memory even after the function completes.</p>
+        </div>
+        
+        <div class="solution">
+            <h3>How to Fix:</h3>
+            <p><strong>Option 1:</strong> Store only what you need:</p>
+            <div class="code-box">function attachHandler() {
+    const largeData = new Array(1000000).fill('data');
+    const dataItem = largeData[0]; // Only keep what you need!
+    
+    document.getElementById('btn').addEventListener('click', function() {
+        console.log(dataItem);
+    });
+}</div>
+            <p><strong>Option 2:</strong> Remove the event listener when not needed:</p>
+            <div class="code-box">function attachHandler() {
+    const largeData = new Array(1000000).fill('data');
+    const handler = function() {
+        console.log(largeData[0]);
+    };
+    
+    const btn = document.getElementById('btn');
+    btn.addEventListener('click', handler);
+    
+    // Return a function to remove the listener
+    return function() {
+        btn.removeEventListener('click', handler);
+    };
+}
+
+const removeHandler = attachHandler();
+// Later when done:
+removeHandler();</div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+        const memoryContainer = document.getElementById('memory-container');
+        const memoryBar = document.getElementById('memory-bar');
+        const consoleOutput = document.getElementById('console');
+        const explanation = document.getElementById('explanation');
+        
+        // Buttons
+        const step1Button = document.getElementById('step1');
+        const step2Button = document.getElementById('step2');
+        const step3Button = document.getElementById('step3');
+        const step4Button = document.getElementById('step4');
+        const step5Button = document.getElementById('step5');
+        const resetButton = document.getElementById('reset');
+        
+        // Memory tracking
+        let memoryUsage = 0.5; // Starting with minimal memory usage
+        let objects = {};
+        let arrows = [];
+        
+        // Helper functions
+        function createObject(id, className, text, left, top) {
+            // Remove existing object if it exists
+            if (objects[id]) {
+                objects[id].element.remove();
+            }
+            
+            const element = document.createElement('div');
+            element.id = id;
+            element.className = `memory-object ${className}`;
+            element.textContent = text;
+            element.style.left = `${left}px`;
+            element.style.top = `${top}px`;
+            
+            memoryContainer.appendChild(element);
+            
+            objects[id] = {
+                element,
+                left,
+                top,
+                width: 0, // Will be updated after render
+                height: 0
+            };
+            
+            // Let the browser render it, then get dimensions
+            setTimeout(() => {
+                objects[id].width = element.offsetWidth;
+                objects[id].height = element.offsetHeight;
+            }, 0);
+            
+            return id;
+        }
+        
+        function createArrow(fromId, toId) {
+            // Wait a bit to ensure objects are rendered and have calculated dimensions
+            setTimeout(() => {
+                if (!objects[fromId] || !objects[toId]) return;
+                
+                const fromObj = objects[fromId];
+                const toObj = objects[toId];
+                
+                const fromX = fromObj.left + fromObj.width / 2;
+                const fromY = fromObj.top + fromObj.height / 2;
+                const toX = toObj.left + toObj.width / 2;
+                const toY = toObj.top + toObj.height / 2;
+                
+                const dx = toX - fromX;
+                const dy = toY - fromY;
+                const length = Math.sqrt(dx * dx + dy * dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+                
+                const arrow = document.createElement('div');
+                arrow.className = 'arrow';
+                arrow.style.width = `${length}px`;
+                arrow.style.left = `${fromX}px`;
+                arrow.style.top = `${fromY}px`;
+                arrow.style.transform = `rotate(${angle}deg)`;
+                
+                memoryContainer.appendChild(arrow);
+                arrows.push(arrow);
+            }, 50); // Small delay to ensure objects are rendered
+        }
+        
+        function updateMemoryBar() {
+            const percentage = Math.min((memoryUsage / 20) * 100, 100);
+            memoryBar.style.width = `${percentage}%`;
+            memoryBar.textContent = `${memoryUsage.toFixed(1)} MB`;
+        }
+        
+        function log(text) {
+            const logLine = document.createElement('div');
+            logLine.className = 'console-log fade-in';
+            logLine.textContent = text.startsWith('//') ? text : `> ${text}`;
+            consoleOutput.appendChild(logLine);
+            consoleOutput.scrollTop = consoleOutput.scrollHeight;
+        }
+        
+        function clearConsole() {
+            consoleOutput.innerHTML = '';
+            log('// Console output will appear here');
+        }
+        
+        function clearMemoryContainer() {
+            memoryContainer.innerHTML = '';
+            objects = {};
+            arrows.forEach(arrow => arrow.remove());
+            arrows = [];
+        }
+        
+        function updateExplanation(text) {
+            explanation.innerHTML = `<h3>Memory Leak Problem:</h3><p>${text}</p>`;
+        }
+        
+        // Step functions
+        function step1InitialSetup() {
+            // Reset everything
+            clearMemoryContainer();
+            clearConsole();
+            memoryUsage = 0.5;
+            updateMemoryBar();
+            
+            // Create initial setup with button
+            createObject('btn', 'button-element', 'Button#btn', 340, 200);
+            
+            log('// Page loaded');
+            log('// DOM initialized with button element');
+            
+            updateExplanation("The page has loaded with a button element with id='btn'. The memory usage is minimal.");
+            
+            // Enable next step
+            step1Button.disabled = true;
+            step2Button.disabled = false;
+        }
+        
+        function step2CreateLargeArray() {
+            // Create function
+            createObject('attachHandler', 'function', 'attachHandler()', 150, 70);
+            
+            log('// Calling attachHandler()');
+            log('function attachHandler() {');
+            
+            // Create large data after small delay
+            setTimeout(() => {
+                createObject('largeData', 'large-data', 'largeData[1000000]', 500, 70);
+                createArrow('attachHandler', 'largeData');
+                
+                // Increase memory usage
+                memoryUsage += 8;
+                updateMemoryBar();
+                
+                log('    const largeData = new Array(1000000).fill("data");');
+                
+                updateExplanation("The function creates a large array with 1 million items. This consumes approximately 8MB of memory.");
+                
+                // Enable next step
+                step2Button.disabled = true;
+                step3Button.disabled = false;
+            }, 800);
+        }
+        
+        function step3AddEventListener() {
+            // Create event listener
+            createObject('eventListener', 'event-listener', 'Click Handler', 150, 220);
+            
+            // Create references
+            setTimeout(() => {
+                createArrow('btn', 'eventListener');
+                createArrow('eventListener', 'largeData');
+                
+                log('    document.getElementById("btn").addEventListener("click", function() {');
+                log('        console.log(largeData[0]);');
+                log('    });');
+                
+                updateExplanation("The function adds a click event listener to the button. The event handler function creates a <strong>closure</strong> that references the entire largeData array. This is crucial - the closure maintains a reference to all variables it can access, including largeData.");
+                
+                // Enable next step
+                step3Button.disabled = true;
+                step4Button.disabled = false;
+            }, 800);
+        }
+        
+        function step4FunctionEnds() {
+            // Remove the function but keep the references
+            const functionElement = objects['attachHandler'].element;
+            functionElement.style.opacity = '0';
+            
+            setTimeout(() => {
+                functionElement.remove();
+                delete objects['attachHandler'];
+                
+                log('}');
+                log('// Function attachHandler() has completed execution');
+                
+                updateExplanation("The function has completed execution and should be removed from memory. Normally, when a function ends, all its local variables (like largeData) should be garbage collected. However, the event listener's closure still references largeData, preventing it from being garbage collected.");
+                
+                // Enable next step
+                step4Button.disabled = true;
+                step5Button.disabled = false;
+            }, 800);
+        }
+        
+        function step5GarbageCollection() {
+            // Highlight the large data to show it's not being collected
+            const largeDataElement = objects['largeData'].element;
+            largeDataElement.style.boxShadow = '0 0 10px 5px rgba(234, 67, 53, 0.7)';
+            
+            setTimeout(() => {
+                largeDataElement.style.boxShadow = '';
+                
+                log('// Garbage collection runs but cannot free largeData');
+                log('// MEMORY LEAK: largeData (8MB) remains in memory');
+                
+                updateExplanation(`<span class="highlight">MEMORY LEAK DETECTED:</span> The garbage collector tries to free unused memory, but cannot release the large array because the event listener's closure still holds a reference to it. As long as the button exists on the page with its event listener attached, the entire 8MB array will remain in memory, even though we only need its first element. This is especially problematic if this function runs multiple times, as each call will leak more memory.`);
+                
+                // Enable reset button
+                step5Button.disabled = true;
+                resetButton.disabled = false;
+            }, 800);
+        }
+        
+        // Button event listeners
+        step1Button.addEventListener('click', step1InitialSetup);
+        step2Button.addEventListener('click', step2CreateLargeArray);
+        step3Button.addEventListener('click', step3AddEventListener);
+        step4Button.addEventListener('click', step4FunctionEnds);
+        step5Button.addEventListener('click', step5GarbageCollection);
+        resetButton.addEventListener('click', () => {
+            // Reset everything
+            clearMemoryContainer();
+            clearConsole();
+            memoryUsage = 0.5;
+            updateMemoryBar();
+            
+            updateExplanation("This visualization shows how closures can cause memory leaks. Follow the steps to see how the large array remains in memory even after the function completes.");
+            
+            // Enable first step
+            step1Button.disabled = false;
+            step2Button.disabled = true;
+            step3Button.disabled = true;
+            step4Button.disabled = true;
+            step5Button.disabled = true;
+            resetButton.disabled = true;
+        });
+        
+        // Start with first step on page load
+        document.addEventListener('DOMContentLoaded', step1InitialSetup);
+    </script>
+</body>
+</html>

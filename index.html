@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Concepts & Examples</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha512-z3gLpd7yknf1YoNbCzqRKc4qyor8gaKU1qmn+CShxbuBusANI9QpRohGBreCFkKxLhei6S9CQXFEbbKuqLg0DA==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2980b9;
+            --accent-color: #f39c12;
+            --text-color: #333;
+            --bg-color: #f5f5f5;
+            --card-bg: #ffffff;
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --hover-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .header-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .search-bar {
+            margin: 2rem auto;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .search-bar input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            border: none;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+        }
+
+        .search-bar input:focus {
+            outline: none;
+            box-shadow: var(--hover-shadow);
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-color);
+        }
+
+        .question-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .question-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--shadow);
+            transition: var(--transition);
+            display: flex;
+            flex-direction: column;
+            cursor: pointer;
+            height: 100%;
+        }
+
+        .question-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--hover-shadow);
+        }
+
+        .question-number {
+            font-size: 0.9rem;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .question-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            flex-grow: 1;
+        }
+
+        .question-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+
+        .tag {
+            background-color: rgba(52, 152, 219, 0.1);
+            color: var(--primary-color);
+            font-size: 0.8rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 20px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .difficulty {
+            display: flex;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+
+        .easy {
+            color: #27ae60;
+        }
+
+        .medium {
+            color: #f39c12;
+        }
+
+        .hard {
+            color: #e74c3c;
+        }
+
+        .view-details {
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .view-details i {
+            transition: var(--transition);
+        }
+
+        .question-card:hover .view-details i {
+            transform: translateX(4px);
+        }
+
+        .categories-section {
+            margin: 2rem 0;
+        }
+        
+        .section-title {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: #333;
+            text-align: center;
+        }
+        
+        .categories {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.8rem;
+            margin: 1.5rem 0;
+        }
+
+        .category-btn {
+            background-color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 30px;
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .category-btn:hover {
+            background-color: #e8f4fc;
+            color: var(--primary-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .category-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        footer {
+            background-color: #2c3e50;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 3rem;
+        }
+
+        .footer-content {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .progress-container {
+            margin-top: 2rem;
+            text-align: center;
+        }
+
+        .progress-bar {
+            background-color: #eee;
+            height: 8px;
+            border-radius: 4px;
+            width: 100%;
+            max-width: 400px;
+            margin: 0.5rem auto;
+            overflow: hidden;
+        }
+
+        .progress {
+            background-color: var(--accent-color);
+            height: 100%;
+            width: 0;
+            transition: width 1s ease;
+        }
+
+        .progress-text {
+            font-size: 0.9rem;
+            color: #777;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+            .question-list {
+                grid-template-columns: 1fr;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+        }
+
+        /* Dark mode toggle */
+        .theme-switch {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background-color: var(--primary-color);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            transition: var(--transition);
+        }
+
+        .theme-switch:hover {
+            transform: scale(1.1);
+        }
+
+        /* Animation for cards */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .question-card {
+            animation: fadeIn 0.5s ease forwards;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="header-content">
+            <h1>JavaScript Concepts & Examples</h1>
+            <p class="subtitle">A comprehensive guide to JavaScript concepts with interactive examples</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search topics...">
+            <i class="fas fa-search search-icon"></i>
+        </div>
+
+        <div class="categories-section">
+            <h2 class="section-title">Categories</h2>
+            <div class="categories">
+                <button class="category-btn active" data-category="all">All</button>
+                <button class="category-btn" data-category="basics">Basics</button>
+                <button class="category-btn" data-category="advanced">Advanced</button>
+                <button class="category-btn" data-category="async">Async</button>
+                <button class="category-btn" data-category="event-loop">Event Loop</button>
+                <button class="category-btn" data-category="dom">DOM</button>
+                <button class="category-btn" data-category="es6">ES6</button>
+                <button class="category-btn" data-category="memory">Memory</button>
+                <button class="category-btn" data-category="security">Security</button>
+            </div>
+        </div>
+
+
+
+        <div class="question-list" id="question-list">
+            <!-- Questions will be dynamically added here -->
+        </div>
+    </div>
+
+    <div class="theme-switch" id="theme-switch">
+        <i class="fas fa-moon"></i>
+    </div>
+
+    <footer>
+        <div class="footer-content">
+            <p>© 2025 JavaScript Concepts & Examples</p>
+            <p>Designed to help you learn JavaScript concepts</p>
+        </div>
+    </footer>
+
+    <script>
+        // JavaScript topics data based on provided titles
+        const questions = [
+            {
+                id: 1,
+                title: "JavaScript Implicit Type Conversion",
+                description: "Understanding how JavaScript automatically converts values between types",
+                tags: ["types", "basics"],
+                difficulty: "medium",
+                category: "basics"
+            },
+            {
+                id: 2, 
+                title: "Arrow Function and this Context Animation",
+                description: "Visual explanation of how arrow functions handle 'this' differently than regular functions",
+                tags: ["functions", "this"],
+                difficulty: "medium",
+                category: "es6"
+            },
+            {
+                id: 3,
+                title: "Array Splice Animation",
+                description: "Interactive visualization of how Array.splice() modifies arrays in-place",
+                tags: ["arrays", "methods"],
+                difficulty: "easy",
+                category: "basics"
+            },
+            {
+                id: 4,
+                title: "Fetch Error Handling Animation",
+                description: "Visual guide to properly handling errors in fetch API requests",
+                tags: ["api", "async"],
+                difficulty: "medium",
+                category: "async"
+            },
+            {
+                id: 5,
+                title: "Event Propagation Visualization",
+                description: "Interactive demonstration of event bubbling and capturing phases",
+                tags: ["events", "dom"],
+                difficulty: "medium",
+                category: "dom"
+            },
+            {
+                id: 6,
+                title: "Memory Leak due to Closure",
+                description: "How closures can inadvertently cause memory leaks and how to prevent them",
+                tags: ["memory", "closures"],
+                difficulty: "hard",
+                category: "advanced"
+            },
+            {
+                id: 7,
+                title: "Safe Data Insertion Into DOM",
+                description: "Techniques to avoid XSS vulnerabilities when adding user content to the DOM",
+                tags: ["security", "dom"],
+                difficulty: "medium",
+                category: "dom"
+            },
+            {
+                id: 8,
+                title: "Security Risks of eval() Function",
+                description: "Understanding the dangers of using eval() and safer alternatives",
+                tags: ["security", "anti-patterns"],
+                difficulty: "medium",
+                category: "advanced"
+            },
+            {
+                id: 9,
+                title: "JavaScript Event Loop Visualization",
+                description: "Interactive visualization of how the event loop processes tasks",
+                tags: ["event-loop", "async"],
+                difficulty: "hard",
+                category: "event-loop"
+            },
+            {
+                id: 10,
+                title: "JavaScript var vs let in Loops",
+                description: "Visual demonstration of closure behavior differences between var and let in loops",
+                tags: ["scope", "es6"],
+                difficulty: "medium",
+                category: "es6"
+            },
+            {
+                id: 11,
+                title: "DOM Memory Leak Visualization",
+                description: "Identifying and fixing common DOM-related memory leaks",
+                tags: ["memory", "dom"],
+                difficulty: "hard",
+                category: "dom"
+            },
+            {
+                id: 12,
+                title: "Debounce Animation",
+                description: "Visual explanation of how debouncing limits function execution",
+                tags: ["performance", "functions"],
+                difficulty: "medium",
+                category: "advanced"
+            },
+            {
+                id: 14,
+                title: "Memory Leak via Closure Visualization",
+                description: "Interactive demonstration of how closures can cause memory leaks",
+                tags: ["memory", "closures"],
+                difficulty: "hard",
+                category: "advanced"
+            },
+            {
+                id: 15,
+                title: "Memory Leak from Uncleaned Timers",
+                description: "How forgotten timers and intervals can cause memory issues",
+                tags: ["memory", "performance"],
+                difficulty: "medium",
+                category: "advanced"
+            },
+            {
+                id: 16,
+                title: "Recursive Event Listener Attachment Issue",
+                description: "Problems caused by attaching event listeners inside other event handlers",
+                tags: ["events", "dom"],
+                difficulty: "hard",
+                category: "dom"
+            },
+            {
+                id: 17,
+                title: "Main Thread vs Web Worker Performance",
+                description: "Comparing performance of intensive tasks on main thread vs web workers",
+                tags: ["performance", "web-workers"],
+                difficulty: "hard",
+                category: "advanced"
+            },
+            {
+                id: 18,
+                title: "Async Performance: Sequential vs Parallel Execution",
+                description: "Visualizing performance differences between sequential and parallel async operations",
+                tags: ["async", "performance"],
+                difficulty: "medium",
+                category: "async"
+            },
+            {
+                id: 19,
+                title: "Event Loop: Microtasks & Macrotasks",
+                description: "How the event loop prioritizes and processes different types of tasks",
+                tags: ["event-loop", "async"],
+                difficulty: "hard",
+                category: "event-loop"
+            },
+            {
+                id: 20,
+                title: "JavaScript Closure & Event Loop Visualization",
+                description: "Interactive visualization showing how closures interact with the event loop",
+                tags: ["closures", "event-loop"],
+                difficulty: "hard",
+                category: "advanced"
+            }
+        ];
+
+        // Function to render question cards
+        function renderQuestions(questionsToRender) {
+            const questionList = document.getElementById('question-list');
+            questionList.innerHTML = '';
+            
+            questionsToRender.forEach((question, index) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                card.style.animationDelay = `${index * 0.05}s`;
+                
+                card.innerHTML = `
+                    <div class="question-number">Topic ${question.id}</div>
+                    <div class="question-title">${question.title}</div>
+                    <div class="question-tags">
+                        ${question.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                    <div class="card-footer">
+                        <div class="difficulty ${question.difficulty}">
+                            <i class="fas fa-circle"></i> 
+                            <span>${question.difficulty.charAt(0).toUpperCase() + question.difficulty.slice(1)}</span>
+                        </div>
+                        <div class="view-details">
+                            View Example <i class="fas fa-arrow-right"></i>
+                        </div>
+                    </div>
+                `;
+                
+                card.addEventListener('click', () => {
+                    window.location.href = `quest_${question.id}.html`;
+                });
+                
+                questionList.appendChild(card);
+            });
+
+            // No tracking needed
+        }
+
+        // Search functionality
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredQuestions = questions.filter(question => 
+                question.title.toLowerCase().includes(searchTerm) || 
+                question.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+            );
+            renderQuestions(filteredQuestions);
+        });
+
+        // Category filter
+        document.querySelectorAll('.category-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                // Update active class
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                
+                const category = btn.dataset.category;
+                let filteredQuestions;
+                
+                if (category === 'all') {
+                    filteredQuestions = questions;
+                } else {
+                    filteredQuestions = questions.filter(q => q.category === category);
+                }
+                
+                renderQuestions(filteredQuestions);
+            });
+        });
+
+        // Dark mode toggle
+        document.getElementById('theme-switch').addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
+            const icon = document.querySelector('.theme-switch i');
+            
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+                // Add dark mode CSS variables
+                document.documentElement.style.setProperty('--bg-color', '#1a1a1a');
+                document.documentElement.style.setProperty('--card-bg', '#2a2a2a');
+                document.documentElement.style.setProperty('--text-color', '#f5f5f5');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+                // Reset to light mode CSS variables
+                document.documentElement.style.setProperty('--bg-color', '#f5f5f5');
+                document.documentElement.style.setProperty('--card-bg', '#ffffff');
+                document.documentElement.style.setProperty('--text-color', '#333');
+            }
+        });
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', () => {
+            renderQuestions(questions);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recursive Event Listener Attachment Issue</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .code-container {
+            background-color: #282c34;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+            font-family: monospace;
+            position: relative;
+            overflow: hidden;
+        }
+        .code {
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .animation-container {
+            height: 450px;
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #f9f9f9;
+        }
+        .browser-frame {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            box-sizing: border-box;
+        }
+        .browser-toolbar {
+            height: 30px;
+            background-color: #e0e0e0;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+        }
+        .browser-address {
+            flex-grow: 1;
+            height: 20px;
+            background-color: white;
+            border-radius: 10px;
+            margin: 0 10px;
+            padding: 0 10px;
+            font-size: 12px;
+            line-height: 20px;
+            color: #666;
+        }
+        .browser-content {
+            position: relative;
+            height: calc(100% - 30px);
+            overflow: auto;
+            padding: 10px;
+        }
+        .memory-container {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background-color: rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            padding: 10px;
+            box-sizing: border-box;
+            transition: height 0.3s;
+            z-index: 100;
+        }
+        .memory-header {
+            color: white;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        .memory-bars {
+            display: flex;
+            height: 50px;
+            align-items: flex-end;
+        }
+        .memory-bar {
+            flex-grow: 1;
+            background-color: #4CAF50;
+            margin: 0 2px;
+            min-width: 5px;
+            transition: height 0.2s;
+        }
+        .memory-labels {
+            display: flex;
+            justify-content: space-between;
+            color: #aaa;
+            font-size: 12px;
+            padding: 5px 0;
+        }
+        .dom-button {
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            margin: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .dom-button:hover {
+            background-color: #2980b9;
+        }
+        .metrics {
+            position: absolute;
+            right: 10px;
+            top: 40px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        .metrics-item {
+            margin: 5px 0;
+        }
+        .control-panel {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .button.reset {
+            background-color: #f44336;
+        }
+        .button.reset:hover {
+            background-color: #d32f2f;
+        }
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #eee;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            background-color: #ddd;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .explanation {
+            line-height: 1.6;
+            color: #333;
+        }
+        .warning {
+            color: #f44336;
+            font-weight: bold;
+        }
+        .tip {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+        .good-code {
+            background-color: #1e3a2d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Recursive Event Listener Attachment Issue</h1>
+        
+        <div class="code-container">
+            <div class="code">function recursiveAttach() {
+    const btn = document.createElement('button');
+    btn.textContent = "Click me";
+    btn.addEventListener('click', () => {
+        console.log('Button clicked!');
+        recursiveAttach();  // Creates another button when clicked
+    });
+    document.body.appendChild(btn);
+}
+
+recursiveAttach();  // Initial call to create first button</div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('animation')">Animation</div>
+            <div class="tab" onclick="switchTab('explanation')">Explanation</div>
+            <div class="tab" onclick="switchTab('solution')">Solution</div>
+        </div>
+        
+        <div id="animation-section" class="content-section active">
+            <div class="animation-container">
+                <div class="browser-frame">
+                    <div class="browser-toolbar">
+                        <div class="browser-address">https://example.com/recursive-button-app</div>
+                    </div>
+                    <div class="browser-content" id="browser-content">
+                        <!-- Buttons will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <div class="metrics" id="metrics">
+                    <div class="metrics-item" id="button-count">Buttons: 1</div>
+                    <div class="metrics-item" id="memory-usage">Memory: 5 MB</div>
+                    <div class="metrics-item" id="dom-size">DOM Elements: 2</div>
+                    <div class="metrics-item" id="listeners-count">Event Listeners: 1</div>
+                    <div class="metrics-item" id="performance">Performance: 100%</div>
+                </div>
+                
+                <div class="memory-container">
+                    <div class="memory-header">
+                        <span>Memory Usage Over Time</span>
+                        <span id="memory-value">5 MB</span>
+                    </div>
+                    <div class="memory-bars" id="memory-bars">
+                        <!-- Memory bars will be added dynamically -->
+                    </div>
+                    <div class="memory-labels">
+                        <span>Time</span>
+                        <span>Current</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="control-panel">
+                <button class="button" id="start-btn" onclick="startSimulation()">Start Simulation</button>
+                <button class="button" id="click-btn" onclick="simulateButtonClick()">Simulate Button Click</button>
+                <button class="button" id="fast-btn" onclick="simulateRapidClicks()">Simulate 10 Rapid Clicks</button>
+                <button class="button reset" id="reset-btn" onclick="resetSimulation()">Reset</button>
+            </div>
+        </div>
+        
+        <div id="explanation-section" class="content-section">
+            <div class="explanation">
+                <h2>Understanding the Problem</h2>
+                <p>The code above creates a critical issue that can severely impact web application performance:</p>
+                
+                <h3>The Issue Breakdown:</h3>
+                <ol>
+                    <li><strong>Recursive Button Creation:</strong> Each button click creates a new button, which has its own event listener.</li>
+                    <li><strong>Exponential DOM Growth:</strong> With each click, more buttons are added to the page without any limit.</li>
+                    <li><strong>Memory Leak:</strong> As buttons and event listeners accumulate, they consume more memory.</li>
+                    <li><strong>Performance Degradation:</strong> The growing DOM tree causes rendering and event handling to slow down.</li>
+                </ol>
+                
+                <h3>Specific Problems:</h3>
+                <ul>
+                    <li class="warning">Each click adds a new DOM element without removing old ones</li>
+                    <li class="warning">Each button has its own event listener, which consumes memory</li>
+                    <li class="warning">The page becomes increasingly sluggish as more buttons are added</li>
+                    <li class="warning">Eventually, the browser may become unresponsive or crash due to excessive memory usage</li>
+                </ul>
+                
+                <p>In a real application, this pattern can cause serious user experience issues and is difficult to debug because the memory usage increases gradually until it reaches a critical point.</p>
+            </div>
+        </div>
+        
+        <div id="solution-section" class="content-section">
+            <div class="explanation">
+                <h2>Better Approaches</h2>
+                
+                <h3>Solution 1: Limit the Number of Elements</h3>
+                <div class="code-container good-code">
+                    <div class="code">let buttonCount = 0;
+const MAX_BUTTONS = 5;
+
+function controlledAttach() {
+    if (buttonCount >= MAX_BUTTONS) {
+        console.log('Maximum number of buttons reached');
+        return;
+    }
+    
+    const btn = document.createElement('button');
+    btn.textContent = "Click me";
+    btn.addEventListener('click', () => {
+        console.log('Button clicked!');
+        controlledAttach();
+    });
+    document.body.appendChild(btn);
+    buttonCount++;
+}</div>
+                </div>
+                
+                <h3>Solution 2: Event Delegation Pattern</h3>
+                <div class="code-container good-code">
+                    <div class="code">// Create a container for all buttons
+const buttonContainer = document.createElement('div');
+document.body.appendChild(buttonContainer);
+
+// Add a single event listener to the container
+buttonContainer.addEventListener('click', (event) => {
+    if (event.target.tagName === 'BUTTON') {
+        console.log('Button clicked!');
+        addNewButton();
+    }
+});
+
+function addNewButton() {
+    const btn = document.createElement('button');
+    btn.textContent = "Click me";
+    buttonContainer.appendChild(btn);
+}</div>
+                </div>
+                
+                <h3>Solution 3: Clean Up Old Elements</h3>
+                <div class="code-container good-code">
+                    <div class="code">function managedAttach() {
+    // Remove the old button if it exists
+    const oldButton = document.querySelector('button');
+    if (oldButton) {
+        oldButton.remove();
+    }
+    
+    // Create a new button
+    const btn = document.createElement('button');
+    btn.textContent = "Click me";
+    btn.addEventListener('click', () => {
+        console.log('Button clicked!');
+        managedAttach();
+    });
+    document.body.appendChild(btn);
+}</div>
+                </div>
+                
+                <h3>Best Practices for Event Listeners:</h3>
+                <ul>
+                    <li class="tip">Always remove event listeners when they're no longer needed</li>
+                    <li class="tip">Use event delegation where possible to reduce the number of listeners</li>
+                    <li class="tip">Implement upper limits when adding elements dynamically</li>
+                    <li class="tip">Be cautious with recursive functions that modify the DOM</li>
+                    <li class="tip">Monitor memory usage during development with browser DevTools</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let simulation = {
+            running: false,
+            buttonCount: 0,
+            memoryUsage: 5,
+            domElements: 2,
+            listeners: 0,
+            performance: 100,
+            memoryHistory: []
+        };
+        
+        function switchTab(tab) {
+            // Update tab styling
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            // Show correct content section
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${tab}-section`).classList.add('active');
+        }
+        
+        function startSimulation() {
+            resetSimulation();
+            simulation.running = true;
+            document.getElementById('start-btn').disabled = true;
+            
+            // Create the first button
+            createSimulatedButton();
+            
+            // Start memory tracking
+            updateMemoryBars();
+            memoryTrackingInterval = setInterval(updateMemoryBars, 1000);
+        }
+        
+        function createSimulatedButton() {
+            if (!simulation.running) return;
+            
+            simulation.buttonCount++;
+            simulation.domElements += 1;
+            simulation.listeners += 1;
+            simulation.memoryUsage += (simulation.buttonCount * 0.5);
+            updateMetrics();
+            
+            const browserContent = document.getElementById('browser-content');
+            const button = document.createElement('button');
+            button.className = 'dom-button';
+            button.textContent = `Click me (${simulation.buttonCount})`;
+            button.onclick = function() {
+                simulateButtonClick(this);
+            };
+            
+            // Apply GSAP animation for the new button
+            button.style.opacity = 0;
+            button.style.transform = 'scale(0.5)';
+            browserContent.appendChild(button);
+            
+            gsap.to(button, {
+                opacity: 1,
+                scale: 1,
+                duration: 0.3,
+                ease: "back.out(1.7)"
+            });
+            
+            // Decrease performance as buttons increase
+            updatePerformance();
+        }
+        
+        function simulateButtonClick(specificButton = null) {
+            if (!simulation.running) return;
+            
+            // Highlight the clicked button
+            if (specificButton) {
+                gsap.to(specificButton, {
+                    backgroundColor: '#e74c3c',
+                    duration: 0.2,
+                    yoyo: true,
+                    repeat: 1
+                });
+            } else {
+                // Highlight a random button if none specified
+                const buttons = document.querySelectorAll('.dom-button');
+                if (buttons.length > 0) {
+                    const randomButton = buttons[buttons.length - 1];
+                    gsap.to(randomButton, {
+                        backgroundColor: '#e74c3c',
+                        duration: 0.2,
+                        yoyo: true,
+                        repeat: 1
+                    });
+                }
+            }
+            
+            // Create a new button (recursive behavior)
+            createSimulatedButton();
+            
+            // Scroll to the bottom to show new buttons
+            const browserContent = document.getElementById('browser-content');
+            browserContent.scrollTop = browserContent.scrollHeight;
+        }
+        
+        function simulateRapidClicks() {
+            if (!simulation.running) return;
+            
+            document.getElementById('fast-btn').disabled = true;
+            
+            // Simulate 10 clicks with delays
+            for (let i = 0; i < 10; i++) {
+                setTimeout(() => {
+                    simulateButtonClick();
+                    if (i === 9) {
+                        document.getElementById('fast-btn').disabled = false;
+                    }
+                }, i * 300);
+            }
+        }
+        
+        function updateMetrics() {
+            document.getElementById('button-count').textContent = `Buttons: ${simulation.buttonCount}`;
+            document.getElementById('memory-usage').textContent = `Memory: ${simulation.memoryUsage.toFixed(1)} MB`;
+            document.getElementById('dom-size').textContent = `DOM Elements: ${simulation.domElements}`;
+            document.getElementById('listeners-count').textContent = `Event Listeners: ${simulation.listeners}`;
+            document.getElementById('memory-value').textContent = `${simulation.memoryUsage.toFixed(1)} MB`;
+        }
+        
+        function updatePerformance() {
+            // Decrease performance based on button count
+            simulation.performance = Math.max(100 - (simulation.buttonCount * 2), 10);
+            document.getElementById('performance').textContent = `Performance: ${simulation.performance.toFixed(0)}%`;
+            
+            // Visual feedback for performance degradation
+            if (simulation.performance < 50) {
+                // Add lag effect to simulate performance issues
+                const buttons = document.querySelectorAll('.dom-button');
+                buttons.forEach(button => {
+                    button.style.transition = `all ${0.3 + (100 - simulation.performance) / 100}s`;
+                });
+                
+                // Make the browser content "laggy" when scrolling
+                const browserContent = document.getElementById('browser-content');
+                browserContent.style.scrollBehavior = 'smooth';
+                
+                // Add some jitter to buttons when performance is low
+                if (simulation.performance < 30) {
+                    buttons.forEach(button => {
+                        gsap.to(button, {
+                            x: "random(-3, 3)",
+                            y: "random(-2, 2)",
+                            duration: 0.5,
+                            repeat: -1,
+                            yoyo: true,
+                            ease: "none"
+                        });
+                    });
+                }
+            }
+        }
+        
+        function updateMemoryBars() {
+            if (!simulation.running) return;
+            
+            // Add current memory usage to history
+            simulation.memoryHistory.push(simulation.memoryUsage);
+            
+            // Keep only the last 20 values
+            if (simulation.memoryHistory.length > 20) {
+                simulation.memoryHistory.shift();
+            }
+            
+            // Get the max value for scaling
+            const maxMemory = Math.max(...simulation.memoryHistory, 10);
+            
+            // Clear existing bars
+            const barsContainer = document.getElementById('memory-bars');
+            barsContainer.innerHTML = '';
+            
+            // Create new bars
+            simulation.memoryHistory.forEach(memory => {
+                const bar = document.createElement('div');
+                bar.className = 'memory-bar';
+                
+                // Scale the height based on the maximum value
+                const heightPercentage = (memory / maxMemory) * 100;
+                bar.style.height = `${heightPercentage}%`;
+                
+                // Color based on memory usage
+                if (memory > 50) {
+                    bar.style.backgroundColor = '#e74c3c';
+                } else if (memory > 20) {
+                    bar.style.backgroundColor = '#f39c12';
+                }
+                
+                barsContainer.appendChild(bar);
+            });
+        }
+        
+        function resetSimulation() {
+            // Stop any ongoing simulation
+            simulation.running = false;
+            clearInterval(memoryTrackingInterval);
+            
+            // Reset metrics
+            simulation.buttonCount = 0;
+            simulation.memoryUsage = 5;
+            simulation.domElements = 2;
+            simulation.listeners = 0;
+            simulation.performance = 100;
+            simulation.memoryHistory = [];
+            
+            // Clear the browser content
+            document.getElementById('browser-content').innerHTML = '';
+            
+            // Reset metrics display
+            updateMetrics();
+            document.getElementById('performance').textContent = 'Performance: 100%';
+            
+            // Clear memory bars
+            document.getElementById('memory-bars').innerHTML = '';
+            
+            // Reset buttons
+            document.getElementById('start-btn').disabled = false;
+            document.getElementById('fast-btn').disabled = false;
+            
+            // Kill any running GSAP animations
+            gsap.killTweensOf(".dom-button");
+        }
+        
+        // Initialize the simulation
+        let memoryTrackingInterval;
+        resetSimulation();
+    </script>
+</body>
+</html>

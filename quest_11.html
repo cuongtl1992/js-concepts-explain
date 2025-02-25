@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM Memory Leak Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        
+        .description {
+            margin-bottom: 20px;
+            line-height: 1.6;
+        }
+        
+        .animation-container {
+            position: relative;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin: 20px 0;
+            overflow: hidden;
+            background-color: #f9f9f9;
+        }
+        
+        .dom-area {
+            position: absolute;
+            width: 300px;
+            height: 320px;
+            top: 40px;
+            left: 40px;
+            border: 2px dashed #2c3e50;
+            border-radius: 8px;
+            background-color: #ecf0f1;
+            padding: 10px;
+        }
+        
+        .dom-label {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .memory-area {
+            position: absolute;
+            width: 300px;
+            height: 320px;
+            top: 40px;
+            right: 40px;
+            border: 2px dashed #8e44ad;
+            border-radius: 8px;
+            background-color: #f3e5f5;
+            padding: 10px;
+        }
+        
+        .memory-label {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background-color: #8e44ad;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .widget {
+            width: 150px;
+            height: 40px;
+            background-color: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+            position: absolute;
+            top: 50px;
+            left: 70px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .memory-widget {
+            width: 150px;
+            height: 40px;
+            background-color: #9b59b6;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            margin: 10px;
+            position: absolute;
+            top: 50px;
+            right: 70px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .event-listener {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .reference {
+            stroke: #e74c3c;
+            stroke-width: 2;
+            stroke-dasharray: 5;
+            marker-end: url(#arrowhead);
+        }
+        
+        .code-display {
+            background-color: #2c3e50;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            position: relative;
+            margin-top: 20px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .code-line {
+            line-height: 1.5;
+            white-space: pre;
+        }
+        
+        .highlight {
+            background-color: rgba(255, 255, 0, 0.3);
+            padding: 0 4px;
+        }
+        
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #2980b9;
+        }
+        
+        .solution-button {
+            background-color: #2ecc71;
+        }
+        
+        .solution-button:hover {
+            background-color: #27ae60;
+        }
+        
+        .timeline-container {
+            margin-top: 20px;
+            height: 60px;
+            position: relative;
+            background-color: #eee;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .timeline {
+            height: 10px;
+            background-color: #bbb;
+            margin-top: 25px;
+            position: relative;
+        }
+        
+        .timeline-marker {
+            width: 15px;
+            height: 15px;
+            background-color: #3498db;
+            border-radius: 50%;
+            position: absolute;
+            top: -2.5px;
+            transform: translateX(-50%);
+        }
+        
+        .timeline-label {
+            position: absolute;
+            top: 20px;
+            transform: translateX(-50%);
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .message-box {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(255, 255, 0, 0.2);
+            border: 1px solid #f1c40f;
+            border-radius: 4px;
+            font-size: 14px;
+            max-width: 280px;
+            top: 120px;
+            left: 10px;
+            opacity: 0;
+        }
+        
+        .memory-message {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(231, 76, 60, 0.1);
+            border: 1px solid #e74c3c;
+            border-radius: 4px;
+            font-size: 14px;
+            max-width: 280px;
+            top: 120px;
+            right: 10px;
+            opacity: 0;
+        }
+        
+        .memory-leak-indicator {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 5px 10px;
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        
+        .tab {
+            padding: 8px 16px;
+            background-color: #ddd;
+            cursor: pointer;
+            border-radius: 4px 4px 0 0;
+            margin-right: 5px;
+        }
+        
+        .tab.active {
+            background-color: #2c3e50;
+            color: white;
+        }
+        
+        .step {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(44, 62, 80, 0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DOM Memory Leak Visualization</h1>
+        
+        <div class="description">
+            <p>This animation demonstrates what happens when DOM elements are removed without first removing their event listeners, causing a memory leak. The animation compares the problematic approach with the correct solution.</p>
+        </div>
+        
+        <div class="button-container">
+            <button id="startAnimationBtn">Start Animation</button>
+            <button id="problemBtn" class="active">Show Problem</button>
+            <button id="solutionBtn" class="solution-button">Show Solution</button>
+        </div>
+        
+        <div class="animation-container">
+            <div class="step">Step: <span id="step-text">Ready to start</span></div>
+            
+            <div class="dom-area">
+                <div class="dom-label">DOM</div>
+            </div>
+            
+            <div class="memory-area">
+                <div class="memory-label">Memory</div>
+            </div>
+            
+            <div class="message-box" id="message-box"></div>
+            <div class="memory-message" id="memory-message"></div>
+            <div class="memory-leak-indicator">Memory Leak!</div>
+            
+            <svg width="100%" height="100%" style="position: absolute; top: 0; left: 0; pointer-events: none;">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#e74c3c"/>
+                    </marker>
+                </defs>
+                <path id="reference-line" class="reference" d="M0,0 L0,0" fill="none"/>
+            </svg>
+        </div>
+        
+        <div class="timeline-container">
+            <div class="timeline">
+                <div class="timeline-marker" style="left: 0%;">
+                    <div class="timeline-label">Start</div>
+                </div>
+                <div class="timeline-marker" style="left: 33%;">
+                    <div class="timeline-label">Create</div>
+                </div>
+                <div class="timeline-marker" style="left: 66%;">
+                    <div class="timeline-label">Remove</div>
+                </div>
+                <div class="timeline-marker" style="left: 100%;">
+                    <div class="timeline-label">End</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab active" data-code="problem">Problem Code</div>
+            <div class="tab" data-code="solution">Solution Code</div>
+        </div>
+        
+        <div class="code-display" id="problemCode">
+            <div class="code-line">function createWidget() {</div>
+            <div class="code-line">  const widget = document.createElement('div');</div>
+            <div class="code-line">  widget.textContent = "Click me";</div>
+            <div class="code-line">  widget.addEventListener('click', () => console.log('Widget clicked'));</div>
+            <div class="code-line">  document.body.appendChild(widget);</div>
+            <div class="code-line">  </div>
+            <div class="code-line">  // After 5 seconds, widget is removed without removing event listener</div>
+            <div class="code-line">  setTimeout(() => widget.remove(), 5000);</div>
+            <div class="code-line">}</div>
+            <div class="code-line">createWidget();</div>
+        </div>
+        
+        <div class="code-display" id="solutionCode" style="display: none;">
+            <div class="code-line">function createWidget() {</div>
+            <div class="code-line">  const widget = document.createElement('div');</div>
+            <div class="code-line">  widget.textContent = "Click me";</div>
+            <div class="code-line">  </div>
+            <div class="code-line">  // Store reference to the listener</div>
+            <div class="code-line">  const clickHandler = () => console.log('Widget clicked');</div>
+            <div class="code-line">  widget.addEventListener('click', clickHandler);</div>
+            <div class="code-line">  document.body.appendChild(widget);</div>
+            <div class="code-line">  </div>
+            <div class="code-line">  // After 5 seconds, properly clean up before removing</div>
+            <div class="code-line">  setTimeout(() => {</div>
+            <div class="code-line">    widget.removeEventListener('click', clickHandler);</div>
+            <div class="code-line">    widget.remove();</div>
+            <div class="code-line">  }, 5000);</div>
+            <div class="code-line">}</div>
+            <div class="code-line">createWidget();</div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const startAnimationBtn = document.getElementById('startAnimationBtn');
+        const problemBtn = document.getElementById('problemBtn');
+        const solutionBtn = document.getElementById('solutionBtn');
+        const problemCode = document.getElementById('problemCode');
+        const solutionCode = document.getElementById('solutionCode');
+        const stepText = document.getElementById('step-text');
+        const messageBox = document.getElementById('message-box');
+        const memoryMessage = document.getElementById('memory-message');
+        const domArea = document.querySelector('.dom-area');
+        const memoryArea = document.querySelector('.memory-area');
+        const referenceLine = document.getElementById('reference-line');
+        const tabs = document.querySelectorAll('.tab');
+        
+        // Animation state
+        let isShowingSolution = false;
+        let animation = null;
+        
+        // Tab switching
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                
+                if (tab.dataset.code === 'problem') {
+                    problemCode.style.display = 'block';
+                    solutionCode.style.display = 'none';
+                } else {
+                    problemCode.style.display = 'none';
+                    solutionCode.style.display = 'block';
+                }
+            });
+        });
+        
+        // Button events
+        problemBtn.addEventListener('click', () => {
+            resetAnimation();
+            isShowingSolution = false;
+            problemBtn.classList.add('active');
+            solutionBtn.classList.remove('active');
+            tabs[0].click();
+        });
+        
+        solutionBtn.addEventListener('click', () => {
+            resetAnimation();
+            isShowingSolution = true;
+            solutionBtn.classList.add('active');
+            problemBtn.classList.remove('active');
+            tabs[1].click();
+        });
+        
+        startAnimationBtn.addEventListener('click', () => {
+            resetAnimation();
+            if (isShowingSolution) {
+                runSolutionAnimation();
+            } else {
+                runProblemAnimation();
+            }
+        });
+        
+        function resetAnimation() {
+            if (animation) {
+                animation.kill();
+            }
+            
+            // Clear any existing elements
+            const existingWidget = document.querySelector('.widget');
+            if (existingWidget) {
+                existingWidget.remove();
+            }
+            
+            const existingMemoryWidget = document.querySelector('.memory-widget');
+            if (existingMemoryWidget) {
+                existingMemoryWidget.remove();
+            }
+            
+            const existingEventListener = document.querySelector('.event-listener');
+            if (existingEventListener) {
+                existingEventListener.remove();
+            }
+            
+            // Reset messages
+            gsap.set(messageBox, { opacity: 0 });
+            gsap.set(memoryMessage, { opacity: 0 });
+            gsap.set('.memory-leak-indicator', { opacity: 0 });
+            
+            // Reset code highlights
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.classList.remove('highlight');
+            });
+            
+            // Reset step text
+            stepText.textContent = 'Ready to start';
+            
+            // Reset reference line
+            gsap.set(referenceLine, { attr: { d: 'M0,0 L0,0' } });
+        }
+        
+        function runProblemAnimation() {
+            animation = gsap.timeline();
+            
+            // Step 1: Create Widget
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 1: Creating widget" 
+            });
+            
+            animation.call(() => {
+                highlightCodeLine(0);
+            });
+            
+            animation.to('.code-line:nth-child(2)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Create widget in DOM area
+                    const widget = document.createElement('div');
+                    widget.className = 'widget';
+                    widget.textContent = 'Click me';
+                    domArea.appendChild(widget);
+                }
+            });
+            
+            animation.to('.code-line:nth-child(3)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 2: Add Event Listener
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 2: Adding event listener" 
+            });
+            
+            animation.to('.code-line:nth-child(4)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Create event listener
+                    const eventListener = document.createElement('div');
+                    eventListener.className = 'event-listener';
+                    eventListener.textContent = 'EL';
+                    memoryArea.appendChild(eventListener);
+                    
+                    // Also create memory widget
+                    const memoryWidget = document.createElement('div');
+                    memoryWidget.className = 'memory-widget';
+                    memoryWidget.textContent = 'Widget Ref';
+                    memoryArea.appendChild(memoryWidget);
+                    
+                    // Position event listener
+                    gsap.set(eventListener, {
+                        top: '150px',
+                        right: '70px'
+                    });
+                    
+                    // Draw reference line
+                    const widgetRect = document.querySelector('.widget').getBoundingClientRect();
+                    const listenerRect = eventListener.getBoundingClientRect();
+                    const domRect = domArea.getBoundingClientRect();
+                    const memoryRect = memoryArea.getBoundingClientRect();
+                    
+                    const startX = widgetRect.left + widgetRect.width/2 - domRect.left;
+                    const startY = widgetRect.top + widgetRect.height/2 - domRect.top;
+                    const endX = listenerRect.left + listenerRect.width/2 - memoryRect.left + memoryRect.left - domRect.left;
+                    const endY = listenerRect.top + listenerRect.height/2 - memoryRect.top + memoryRect.top - domRect.top;
+                    
+                    gsap.set(referenceLine, {
+                        attr: {
+                            d: `M${startX},${startY} L${endX},${endY}`
+                        }
+                    });
+                    
+                    // Show message explaining the reference
+                    messageBox.innerHTML = "Event listener holds a reference to the widget element";
+                    gsap.to(messageBox, { opacity: 1, duration: 0.5 });
+                }
+            });
+            
+            // Step 3: Append to DOM
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 3: Widget added to DOM",
+                delay: 1
+            });
+            
+            animation.to(messageBox, { opacity: 0, duration: 0.3 });
+            
+            animation.to('.code-line:nth-child(5)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 4: Wait for timeout
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 4: Waiting 5 seconds (simulated)" 
+            });
+            
+            animation.to('.code-line:nth-child(8)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 5: Remove widget
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 5: Widget removed from DOM",
+                delay: 1
+            });
+            
+            animation.to('.widget', {
+                opacity: 0,
+                y: 50,
+                duration: 0.5,
+                onComplete: () => {
+                    document.querySelector('.widget').style.visibility = 'hidden';
+                    
+                    // Show memory message
+                    memoryMessage.innerHTML = "Event listener still has reference to widget!";
+                    gsap.to(memoryMessage, { opacity: 1, duration: 0.5 });
+                }
+            });
+            
+            // Step 6: Show memory leak
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 6: Memory leak detected!",
+                delay: 1 
+            });
+            
+            animation.to('.memory-leak-indicator', {
+                opacity: 1,
+                duration: 0.5
+            });
+            
+            animation.to(memoryMessage, {
+                backgroundColor: 'rgba(231, 76, 60, 0.2)',
+                borderColor: '#e74c3c',
+                duration: 0.5,
+                repeat: 3,
+                yoyo: true
+            });
+            
+            // Final explanation
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Problem: Memory leak due to lingering event listener reference",
+                delay: 1 
+            });
+            
+            animation.to(memoryMessage, { 
+                opacity: 0, 
+                duration: 0.5,
+                delay: 1
+            });
+            
+            animation.call(() => {
+                messageBox.innerHTML = "Even though the widget is removed from the DOM, it can't be garbage collected because the event listener still maintains a reference to it.";
+                gsap.to(messageBox, { 
+                    opacity: 1, 
+                    duration: 0.5,
+                    left: '50%',
+                    xPercent: -50,
+                    top: '200px',
+                    maxWidth: '500px'
+                });
+            });
+        }
+        
+        function runSolutionAnimation() {
+            animation = gsap.timeline();
+            
+            // Step 1: Create Widget
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 1: Creating widget" 
+            });
+            
+            animation.call(() => {
+                highlightCodeLine(0, true);
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(2)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Create widget in DOM area
+                    const widget = document.createElement('div');
+                    widget.className = 'widget';
+                    widget.textContent = 'Click me';
+                    domArea.appendChild(widget);
+                }
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(3)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 2: Store listener reference
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 2: Store reference to event listener" 
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(6)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Show message
+                    messageBox.innerHTML = "Storing the listener function in a variable";
+                    gsap.to(messageBox, { opacity: 1, duration: 0.5 });
+                }
+            });
+            
+            // Step 3: Add event listener
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 3: Adding event listener",
+                delay: 1
+            });
+            
+            animation.to(messageBox, { opacity: 0, duration: 0.3 });
+            
+            animation.to('#solutionCode .code-line:nth-child(7)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Create event listener
+                    const eventListener = document.createElement('div');
+                    eventListener.className = 'event-listener';
+                    eventListener.textContent = 'EL';
+                    memoryArea.appendChild(eventListener);
+                    
+                    // Also create memory widget
+                    const memoryWidget = document.createElement('div');
+                    memoryWidget.className = 'memory-widget';
+                    memoryWidget.textContent = 'Widget Ref';
+                    memoryArea.appendChild(memoryWidget);
+                    
+                    // Position event listener
+                    gsap.set(eventListener, {
+                        top: '150px',
+                        right: '70px'
+                    });
+                    
+                    // Draw reference line
+                    const widgetRect = document.querySelector('.widget').getBoundingClientRect();
+                    const listenerRect = eventListener.getBoundingClientRect();
+                    const domRect = domArea.getBoundingClientRect();
+                    const memoryRect = memoryArea.getBoundingClientRect();
+                    
+                    const startX = widgetRect.left + widgetRect.width/2 - domRect.left;
+                    const startY = widgetRect.top + widgetRect.height/2 - domRect.top;
+                    const endX = listenerRect.left + listenerRect.width/2 - memoryRect.left + memoryRect.left - domRect.left;
+                    const endY = listenerRect.top + listenerRect.height/2 - memoryRect.top + memoryRect.top - domRect.top;
+                    
+                    gsap.set(referenceLine, {
+                        attr: {
+                            d: `M${startX},${startY} L${endX},${endY}`
+                        }
+                    });
+                }
+            });
+            
+            // Step 4: Append to DOM
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 4: Widget added to DOM" 
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(8)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 5: Wait for timeout
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 5: Waiting 5 seconds (simulated)" 
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(11)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut"
+            });
+            
+            // Step 6: Remove event listener
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 6: Remove event listener first",
+                delay: 1 
+            });
+            
+            animation.to('#solutionCode .code-line:nth-child(12)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Remove reference line and event listener
+                    gsap.to(referenceLine, {
+                        attr: {
+                            d: 'M0,0 L0,0'
+                        },
+                        duration: 0.5
+                    });
+                    
+                    gsap.to('.event-listener', {
+                        opacity: 0,
+                        scale: 0.5,
+                        duration: 0.5
+                    });
+                    
+                    // Show message
+                    messageBox.innerHTML = "Event listener removed, breaking the reference to widget";
+                    gsap.to(messageBox, { opacity: 1, duration: 0.5 });
+                }
+            });
+            
+            // Step 7: Remove widget
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 7: Now widget can be safely removed",
+                delay: 1 
+            });
+            
+            animation.to(messageBox, { opacity: 0, duration: 0.3 });
+            
+            animation.to('#solutionCode .code-line:nth-child(13)', { 
+                duration: 0.5,
+                backgroundColor: 'rgba(255, 255, 0, 0.3)',
+                ease: "power1.inOut",
+                onComplete: () => {
+                    // Remove widget
+                    gsap.to('.widget', {
+                        opacity: 0,
+                        y: 50,
+                        duration: 0.5
+                    });
+                    
+                    // Fade out memory widget
+                    gsap.to('.memory-widget', {
+                        opacity: 0,
+                        scale: 0.5,
+                        duration: 0.5
+                    });
+                }
+            });
+            
+            // Step 8: Show garbage collection
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Step 8: Memory is freed by garbage collector",
+                delay: 1 
+            });
+            
+            animation.call(() => {
+                memoryMessage.innerHTML = "No more references to widget, can be garbage collected!";
+                memoryMessage.style.backgroundColor = "rgba(46, 204, 113, 0.1)";
+                memoryMessage.style.borderColor = "#2ecc71";
+                gsap.to(memoryMessage, { opacity: 1, duration: 0.5 });
+            });
+            
+            // Final explanation
+            animation.to('#step-text', { 
+                duration: 0.3, 
+                text: "Solution: Properly remove event listeners before removing elements",
+                delay: 2
+            });
+            
+            animation.to(memoryMessage, { 
+                opacity: 0, 
+                duration: 0.5,
+                delay: 1
+            });
+            
+            animation.call(() => {
+                messageBox.innerHTML = "By removing the event listener before removing the element from the DOM, we break the reference and allow the garbage collector to free the memory.";
+                gsap.to(messageBox, { 
+                    opacity: 1, 
+                    duration: 0.5,
+                    left: '50%',
+                    xPercent: -50,
+                    top: '200px',
+                    maxWidth: '500px'
+                });
+            });
+        }
+        
+        function highlightCodeLine(index, isSolution = false) {
+            // Clear any existing highlights
+            document.querySelectorAll('.highlight').forEach(el => {
+                el.classList.remove('highlight');
+            });
+            
+            // Add highlight to specified line
+            const container = isSolution ? solutionCode : problemCode;
+            const lines = container.querySelectorAll('.code-line');
+            if (lines[index]) {
+                lines[index].classList.add('highlight');
+            }
+        }
+        
+        // Initialize
+        resetAnimation();
+    </script>
+</body>
+</html>

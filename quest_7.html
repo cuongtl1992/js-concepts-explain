@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Safe Data Insertion Into DOM</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .explanation {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+            border-left: 4px solid #3498db;
+        }
+        .demo-section {
+            margin-bottom: 40px;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .demo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .method-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .safety-indicator {
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-weight: bold;
+            color: white;
+        }
+        .safe {
+            background-color: #2ecc71;
+        }
+        .unsafe {
+            background-color: #e74c3c;
+        }
+        .neutral {
+            background-color: #f39c12;
+        }
+        .code-block {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .run-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            position: absolute;
+            right: 10px;
+            top: 10px;
+        }
+        .run-button:hover {
+            background-color: #2980b9;
+        }
+        .result-container {
+            border: 2px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+            position: relative;
+        }
+        .result-title {
+            position: absolute;
+            top: -10px;
+            left: 10px;
+            background-color: white;
+            padding: 0 5px;
+            color: #7f8c8d;
+        }
+        .malicious-input {
+            margin-top: 20px;
+            background-color: #ffecb3;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #f39c12;
+        }
+        .input-label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+        .custom-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .conclusion {
+            background-color: #e8f4fc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 40px;
+            border-left: 4px solid #3498db;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .highlight {
+            background-color: #ffffcc;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+        .xss-attack {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .alert-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 100;
+        }
+        .alert-box.show {
+            display: block;
+            animation: fade-in-out 3s forwards;
+        }
+        @keyframes fade-in-out {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .code-comment {
+            color: #7f8c8d;
+        }
+        .best-choice {
+            position: absolute;
+            top: -15px;
+            right: -15px;
+            background-color: #2ecc71;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            transform: rotate(15deg);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 2;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Safe Data Insertion Into DOM</h1>
+        
+        <div class="explanation">
+            <p>When displaying user data on a web page, choosing the right method to insert data into the DOM is crucial for security and preventing vulnerabilities like XSS (Cross-Site Scripting).</p>
+            <p>Let's explore the differences between these methods and understand why <span class="highlight">textContent</span> is the safest choice.</p>
+        </div>
+
+        <div class="malicious-input">
+            <label class="input-label">Input data (potentially containing malicious code):</label>
+            <input type="text" class="custom-input" id="userInput" value='Hello <script>alertXSS()</script> <b>Bold Text</b>' />
+            <button class="run-button" id="updateAllButton">Update All</button>
+        </div>
+
+        <div id="innerTextDemo" class="demo-section">
+            <div class="demo-header">
+                <div class="method-name">a) innerText</div>
+                <div class="safety-indicator neutral">Fairly Safe</div>
+            </div>
+            <div class="code-block">
+                <button class="run-button" onclick="runInnerText()">Run</button>
+                element.innerText = userInput;
+                <div class="code-comment">// Processes text as the browser would display it to users</div>
+            </div>
+            <div class="result-container">
+                <div class="result-title">Result</div>
+                <div id="innerTextResult"></div>
+            </div>
+        </div>
+
+        <div id="textContentDemo" class="demo-section">
+            <div class="best-choice">Correct Answer!</div>
+            <div class="demo-header">
+                <div class="method-name">b) textContent</div>
+                <div class="safety-indicator safe">Safest</div>
+            </div>
+            <div class="code-block">
+                <button class="run-button" onclick="runTextContent()">Run</button>
+                element.textContent = userInput;
+                <div class="code-comment">// Inserts as plain text, doesn't interpret HTML/JavaScript</div>
+            </div>
+            <div class="result-container">
+                <div class="result-title">Result</div>
+                <div id="textContentResult"></div>
+            </div>
+        </div>
+
+        <div id="outerHTMLDemo" class="demo-section">
+            <div class="demo-header">
+                <div class="method-name">c) outerHTML</div>
+                <div class="safety-indicator unsafe">Unsafe</div>
+            </div>
+            <div class="code-block">
+                <button class="run-button" onclick="runOuterHTML()">Run</button>
+                element.outerHTML = userInput;
+                <div class="code-comment">// Interprets and executes HTML/JavaScript code - dangerous!</div>
+            </div>
+            <div class="result-container">
+                <div class="result-title">Result</div>
+                <div id="outerHTMLWrapper">
+                    <div id="outerHTMLResult">Original content</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="innerHTMLDemo" class="demo-section">
+            <div class="demo-header">
+                <div class="method-name">d) innerHTML (Another option)</div>
+                <div class="safety-indicator unsafe">Unsafe</div>
+            </div>
+            <div class="code-block">
+                <button class="run-button" onclick="runInnerHTML()">Run</button>
+                element.innerHTML = userInput;
+                <div class="code-comment">// Interprets and executes HTML/JavaScript code - dangerous!</div>
+            </div>
+            <div class="result-container">
+                <div class="result-title">Result</div>
+                <div id="innerHTMLResult"></div>
+            </div>
+        </div>
+
+        <div class="conclusion">
+            <h2>Conclusion:</h2>
+            <p><strong>textContent</strong> is the safest method for displaying plaintext on an HTML page because:</p>
+            <ul>
+                <li>It processes input data as <strong>pure text</strong>, never interpreting any HTML or JavaScript code.</li>
+                <li>It prevents XSS (Cross-Site Scripting) attacks by displaying potentially harmful HTML code as plain text.</li>
+                <li>It has better performance than <code>innerText</code> because it doesn't consider text presentation.</li>
+            </ul>
+            <p class="xss-attack">Methods like <code>innerHTML</code> and <code>outerHTML</code> are dangerous because they interpret and execute HTML/JavaScript code, creating serious security vulnerabilities!</p>
+        </div>
+    </div>
+
+    <div class="alert-box" id="xssAlert">
+        XSS Attack Detected!
+    </div>
+
+    <script>
+        // Fake XSS attack function 
+        function alertXSS() {
+            const alert = document.getElementById('xssAlert');
+            alert.classList.add('show');
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 3000);
+        }
+
+        window.alertXSS = alertXSS;
+
+        // Demo functions
+        function runInnerText() {
+            const input = document.getElementById('userInput').value;
+            const result = document.getElementById('innerTextResult');
+            result.innerText = input;
+            animateDemo('innerTextResult');
+        }
+
+        function runTextContent() {
+            const input = document.getElementById('userInput').value;
+            const result = document.getElementById('textContentResult');
+            result.textContent = input;
+            animateDemo('textContentResult');
+        }
+
+        function runOuterHTML() {
+            const input = document.getElementById('userInput').value;
+            const wrapper = document.getElementById('outerHTMLWrapper');
+            const element = document.getElementById('outerHTMLResult');
+            
+            // Create a temporary container to handle potential outerHTML issues
+            const tempContainer = document.createElement('div');
+            tempContainer.appendChild(element.cloneNode(true));
+            
+            try {
+                // Try to replace with input, but safely capture errors
+                const originalHTML = tempContainer.innerHTML;
+                tempContainer.innerHTML = input;
+                
+                // Only apply changes if successful
+                if (element && element.parentNode) {
+                    wrapper.innerHTML = input;
+                }
+            } catch(e) {
+                console.log("Safe error handling for outerHTML demo:", e);
+                // Keep the original content in case of error
+            }
+            
+            animateDemo('outerHTMLWrapper');
+        }
+
+        function runInnerHTML() {
+            const input = document.getElementById('userInput').value;
+            const result = document.getElementById('innerHTMLResult');
+            result.innerHTML = input;
+            animateDemo('innerHTMLResult');
+        }
+
+        // Update all demos
+        document.getElementById('updateAllButton').addEventListener('click', function() {
+            runInnerText();
+            runTextContent();
+            runOuterHTML();
+            runInnerHTML();
+        });
+
+        // Animate demo results
+        function animateDemo(elementId) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                gsap.fromTo(
+                    element,
+                    { scale: 0.95, opacity: 0.7 },
+                    { scale: 1, opacity: 1, duration: 0.5, ease: "back.out(1.5)" }
+                );
+            }
+        }
+
+        // Animation on load with GSAP
+        window.addEventListener('DOMContentLoaded', function() {
+            // Show the correct answer indicator
+            document.querySelector('.best-choice').style.display = 'block';
+            
+            // Staggered animation for sections
+            gsap.timeline()
+                .from('.explanation', { opacity: 0, y: 20, duration: 0.7, ease: "power2.out" })
+                .from('.malicious-input', { opacity: 0, y: 20, duration: 0.7, ease: "power2.out" }, "-=0.4")
+                .to('.demo-section', { 
+                    opacity: 1, 
+                    y: 0, 
+                    duration: 0.7, 
+                    stagger: 0.2, 
+                    ease: "power2.out" 
+                }, "-=0.4")
+                .to('.conclusion', { 
+                    opacity: 1, 
+                    y: 0, 
+                    duration: 0.7, 
+                    ease: "power2.out" 
+                }, "-=0.2");
+                
+            // Indicator animations
+            gsap.from('.safety-indicator', {
+                scale: 0.8,
+                opacity: 0,
+                duration: 0.5,
+                stagger: 0.2,
+                ease: "back.out(1.7)",
+                delay: 1
+            });
+            
+            // Best choice badge animation
+            gsap.fromTo(
+                '.best-choice',
+                { scale: 0, rotation: 0 },
+                { 
+                    scale: 1, 
+                    rotation: 15, 
+                    duration: 0.8, 
+                    delay: 1.5,
+                    ease: "elastic.out(1, 0.5)" 
+                }
+            );
+            
+            // Run default examples
+            setTimeout(() => {
+                document.getElementById('updateAllButton').click();
+            }, 1500);
+        });
+    </script>
+</body>
+</html>

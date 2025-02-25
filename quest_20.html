@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Closure & Event Loop Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #2c3e50;
+        }
+        .code-container {
+            background-color: #282c34;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .code {
+            line-height: 1.5;
+            white-space: pre;
+            font-size: 14px;
+        }
+        .highlight {
+            background-color: #3d4556;
+            border-radius: 3px;
+            padding: 2px;
+            margin: -2px;
+        }
+        .execution-area {
+            display: flex;
+            margin-top: 20px;
+            gap: 20px;
+        }
+        .memory-container {
+            flex: 1;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            background-color: #f8f9fa;
+        }
+        .memory-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 16px;
+            color: #2c3e50;
+        }
+        .closure-container {
+            border: 2px dashed #9b59b6;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            background-color: #f0e6f5;
+        }
+        .closure-title {
+            font-weight: bold;
+            color: #9b59b6;
+            margin-bottom: 5px;
+        }
+        .closure-value {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #9b59b6;
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 20px;
+            width: 30px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .counter-methods {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e8f4fc;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        .method {
+            font-family: monospace;
+            margin: 5px 0;
+        }
+        .queues-container {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        .queue {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 12px;
+            position: relative;
+        }
+        .call-stack {
+            background-color: #f9f9f9;
+            border-left: 4px solid #34495e;
+        }
+        .microtask-queue {
+            background-color: #e8f4fc;
+            border-left: 4px solid #3498db;
+        }
+        .macrotask-queue {
+            background-color: #fcf3e8;
+            border-left: 4px solid #e67e22;
+        }
+        .console-output {
+            background-color: #f0f0f0;
+            border-left: 4px solid #7f8c8d;
+        }
+        .queue-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 14px;
+            color: #2c3e50;
+        }
+        .queue-item {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            position: relative;
+            opacity: 0;
+            transform: translateX(-20px);
+        }
+        .queue-item.visible {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .stack-item {
+            background-color: #e0e0e0;
+            border-left: 4px solid #34495e;
+        }
+        .microtask-item {
+            background-color: #bbdefb;
+            border-left: 4px solid #3498db;
+        }
+        .macrotask-item {
+            background-color: #ffe0b2;
+            border-left: 4px solid #e67e22;
+        }
+        .console-item {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            background-color: #f0f0f0;
+            border-left: 4px solid #7f8c8d;
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        .console-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.3s;
+        }
+        .step-control {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 10px;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            background-color: #3498db;
+            color: white;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .reset-btn {
+            background-color: #e74c3c;
+        }
+        .reset-btn:hover {
+            background-color: #c0392b;
+        }
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .step-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #bdc3c7;
+            margin: 0 5px;
+            transition: background-color 0.3s;
+        }
+        .step-dot.active {
+            background-color: #3498db;
+        }
+        .step-description {
+            text-align: center;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .explanation {
+            margin-top: 30px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            line-height: 1.6;
+        }
+        .explanation h2 {
+            color: #2c3e50;
+            margin-top: 0;
+        }
+        .explanation ul {
+            padding-left: 20px;
+        }
+        .explanation li {
+            margin-bottom: 8px;
+        }
+        .highlight-section {
+            position: relative;
+            display: inline-block;
+        }
+        .highlighter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0;
+            height: 100%;
+            background-color: rgba(255, 255, 0, 0.3);
+            transition: width 0.3s;
+            pointer-events: none;
+        }
+        .current-execution {
+            position: absolute;
+            top: -10px;
+            left: -10px;
+            width: 20px;
+            height: 20px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+            transform: scale(0);
+            transition: transform 0.3s;
+        }
+        .current-execution.active {
+            transform: scale(1);
+        }
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>JavaScript Closure & Event Loop Visualization</h1>
+        
+        <div class="code-container">
+            <div class="code">function createCounter(initial) {
+  let count = initial;
+  return {
+    increment() {
+      count++;
+      Promise.resolve().then(() => {
+        console.log(`Incremented to: ${count}`);
+      });
+    },
+    getCount() {
+      return count;
+    }
+  };
+}
+
+const counter = createCounter(0);
+
+// Schedule 1: Using setTimeout (macrotask)
+setTimeout(() => {
+  counter.increment(); // (A)
+  console.log('After increment, count is:', counter.getCount());
+}, 0);
+
+// Schedule 2: Call directly (synchronous)
+counter.increment(); // (B)
+console.log('Initial count is:', counter.getCount());</div>
+        </div>
+        
+        <div class="step-description" id="step-description">
+            Click "Next Step" to start the animation and see how this code executes
+        </div>
+        
+        <div class="step-indicator" id="step-indicator">
+            <!-- Step dots will be added by JS -->
+        </div>
+        
+        <div class="execution-area">
+            <div class="memory-container">
+                <div class="memory-title">Memory & Closures</div>
+                <div id="memory-content">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+            </div>
+            
+            <div class="queues-container">
+                <div class="queue call-stack">
+                    <div class="queue-title">Call Stack</div>
+                    <div id="call-stack">
+                        <!-- Stack items will be added here -->
+                    </div>
+                </div>
+                
+                <div class="queue microtask-queue">
+                    <div class="queue-title">Microtask Queue (Promises)</div>
+                    <div id="microtask-queue">
+                        <!-- Microtask items will be added here -->
+                    </div>
+                </div>
+                
+                <div class="queue macrotask-queue">
+                    <div class="queue-title">Macrotask Queue (setTimeout)</div>
+                    <div id="macrotask-queue">
+                        <!-- Macrotask items will be added here -->
+                    </div>
+                </div>
+                
+                <div class="queue console-output">
+                    <div class="queue-title">Console Output</div>
+                    <div id="console-output">
+                        <!-- Console output will be added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #e0e0e0;"></div>
+                <span>Call Stack</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #bbdefb;"></div>
+                <span>Microtasks (Promises)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #ffe0b2;"></div>
+                <span>Macrotasks (setTimeout)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: #f0e6f5;"></div>
+                <span>Closure Scope</span>
+            </div>
+        </div>
+        
+        <div class="step-control">
+            <button id="prev-btn" class="btn" disabled>Previous Step</button>
+            <button id="next-btn" class="btn">Next Step</button>
+            <button id="reset-btn" class="btn reset-btn">Reset</button>
+        </div>
+        
+        <div class="explanation">
+            <h2>What's Happening?</h2>
+            <p>This visualization demonstrates how JavaScript's event loop processes code involving closures, microtasks (Promises), and macrotasks (setTimeout).</p>
+            <h3>Key Concepts:</h3>
+            <ul>
+                <li><strong>Closure:</strong> The <code>count</code> variable is enclosed in the lexical environment of <code>createCounter</code>, allowing the returned methods to access and modify it even after the function has returned.</li>
+                <li><strong>Event Loop Priority:</strong> JavaScript processes tasks in this order: 
+                    <ol>
+                        <li>Synchronous code</li>
+                        <li>All microtasks (Promises)</li>
+                        <li>One macrotask (setTimeout)</li>
+                        <li>Back to microtasks</li>
+                    </ol>
+                </li>
+                <li><strong>Output Order:</strong> This execution model explains why the console logs appear in the order they do, despite the code's apparent structure.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const stepsCount = 10;
+        let currentStep = 0;
+        
+        // Create step indicators
+        const stepIndicator = document.getElementById('step-indicator');
+        for (let i = 0; i < stepsCount; i++) {
+            const dot = document.createElement('div');
+            dot.className = 'step-dot';
+            if (i === 0) dot.classList.add('active');
+            stepIndicator.appendChild(dot);
+        }
+        
+        // Initialize memory visualization
+        function initializeMemory() {
+            const memoryContent = document.getElementById('memory-content');
+            memoryContent.innerHTML = `
+                <div class="closure-container">
+                    <div class="closure-title">Closure Scope from createCounter</div>
+                    <div><strong>count:</strong> <span class="closure-value" id="count-value">0</span></div>
+                    <div class="counter-methods">
+                        <div class="method">increment(): { count++; Promise... }</div>
+                        <div class="method">getCount(): { return count; }</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add item to call stack
+        function addToCallStack(text) {
+            const item = document.createElement('div');
+            item.className = 'queue-item stack-item';
+            item.textContent = text;
+            
+            const callStack = document.getElementById('call-stack');
+            callStack.insertBefore(item, callStack.firstChild);
+            
+            setTimeout(() => {
+                item.classList.add('visible');
+            }, 100);
+            
+            return item;
+        }
+        
+        // Remove from call stack
+        function removeFromCallStack() {
+            const callStack = document.getElementById('call-stack');
+            if (callStack.children.length > 0) {
+                const item = callStack.firstChild;
+                item.classList.remove('visible');
+                
+                setTimeout(() => {
+                    item.remove();
+                }, 300);
+            }
+        }
+        
+        // Add to microtask queue
+        function addToMicrotaskQueue(text) {
+            const item = document.createElement('div');
+            item.className = 'queue-item microtask-item';
+            item.textContent = text;
+            
+            document.getElementById('microtask-queue').appendChild(item);
+            
+            setTimeout(() => {
+                item.classList.add('visible');
+            }, 100);
+            
+            return item;
+        }
+        
+        // Remove from microtask queue
+        function removeFromMicrotaskQueue() {
+            const queue = document.getElementById('microtask-queue');
+            if (queue.children.length > 0) {
+                const item = queue.firstChild;
+                item.classList.remove('visible');
+                
+                setTimeout(() => {
+                    item.remove();
+                }, 300);
+            }
+        }
+        
+        // Add to macrotask queue
+        function addToMacrotaskQueue(text) {
+            const item = document.createElement('div');
+            item.className = 'queue-item macrotask-item';
+            item.textContent = text;
+            
+            document.getElementById('macrotask-queue').appendChild(item);
+            
+            setTimeout(() => {
+                item.classList.add('visible');
+            }, 100);
+            
+            return item;
+        }
+        
+        // Remove from macrotask queue
+        function removeFromMacrotaskQueue() {
+            const queue = document.getElementById('macrotask-queue');
+            if (queue.children.length > 0) {
+                const item = queue.firstChild;
+                item.classList.remove('visible');
+                
+                setTimeout(() => {
+                    item.remove();
+                }, 300);
+            }
+        }
+        
+        // Add to console output
+        function addToConsoleOutput(text) {
+            const item = document.createElement('div');
+            item.className = 'console-item';
+            item.textContent = text;
+            
+            document.getElementById('console-output').appendChild(item);
+            
+            setTimeout(() => {
+                item.classList.add('visible');
+            }, 100);
+            
+            return item;
+        }
+        
+        // Update count value with animation
+        function updateCountValue(value) {
+            const countElement = document.getElementById('count-value');
+            
+            // Animate the change
+            gsap.to(countElement, {
+                backgroundColor: '#e74c3c',
+                duration: 0.3,
+                onComplete: () => {
+                    countElement.textContent = value;
+                    gsap.to(countElement, {
+                        backgroundColor: '#9b59b6',
+                        duration: 0.3
+                    });
+                }
+            });
+        }
+        
+        // Animation steps
+        const animationSteps = [
+            {
+                description: "Initial setup: createCounter(0) creates a closure with count = 0",
+                action: function() {
+                    initializeMemory();
+                    addToCallStack("Global Execution Context");
+                }
+            },
+            {
+                description: "Schedule setTimeout callback (macrotask) for later execution",
+                action: function() {
+                    const scheduledTask = addToMacrotaskQueue("setTimeout callback: counter.increment() & console.log");
+                }
+            },
+            {
+                description: "Execute counter.increment() synchronously (call B)",
+                action: function() {
+                    const stackItem = addToCallStack("counter.increment()");
+                    
+                    setTimeout(() => {
+                        // Increment count
+                        updateCountValue(1);
+                        
+                        // Schedule a microtask
+                        addToMicrotaskQueue("Promise callback: console.log(`Incremented to: ${count}`)");
+                        
+                        // Remove from stack
+                        setTimeout(() => {
+                            removeFromCallStack();
+                        }, 800);
+                    }, 500);
+                }
+            },
+            {
+                description: "Execute console.log('Initial count is:', 1) synchronously",
+                action: function() {
+                    const stackItem = addToCallStack("console.log('Initial count is:', 1)");
+                    
+                    setTimeout(() => {
+                        addToConsoleOutput("Initial count is: 1");
+                        
+                        // Remove from stack
+                        setTimeout(() => {
+                            removeFromCallStack();
+                        }, 500);
+                    }, 500);
+                }
+            },
+            {
+                description: "Main synchronous code completed, event loop checks for microtasks",
+                action: function() {
+                    // Clear global execution context
+                    removeFromCallStack();
+                    
+                    setTimeout(() => {
+                        // Add microtask to stack
+                        addToCallStack("Promise callback (from increment B)");
+                    }, 500);
+                }
+            },
+            {
+                description: "Execute microtask: console.log(`Incremented to: ${count}`)",
+                action: function() {
+                    // Remove microtask from queue
+                    removeFromMicrotaskQueue();
+                    
+                    setTimeout(() => {
+                        // Add console.log to stack
+                        const stackItem = addToCallStack("console.log(`Incremented to: 1`)");
+                        
+                        setTimeout(() => {
+                            // Add to console output
+                            addToConsoleOutput("Incremented to: 1");
+                            
+                            // Remove from stack
+                            setTimeout(() => {
+                                removeFromCallStack();
+                                removeFromCallStack(); // Remove Promise callback frame
+                            }, 500);
+                        }, 500);
+                    }, 500);
+                }
+            },
+            {
+                description: "No more microtasks, event loop processes macrotask queue",
+                action: function() {
+                    // Add macrotask to stack
+                    addToCallStack("setTimeout callback");
+                    
+                    // Remove macrotask from queue
+                    removeFromMacrotaskQueue();
+                }
+            },
+            {
+                description: "Execute counter.increment() inside setTimeout callback (call A)",
+                action: function() {
+                    const stackItem = addToCallStack("counter.increment()");
+                    
+                    setTimeout(() => {
+                        // Increment count
+                        updateCountValue(2);
+                        
+                        // Schedule a microtask
+                        addToMicrotaskQueue("Promise callback: console.log(`Incremented to: ${count}`)");
+                        
+                        // Remove from stack
+                        setTimeout(() => {
+                            removeFromCallStack();
+                        }, 800);
+                    }, 500);
+                }
+            },
+            {
+                description: "Execute console.log('After increment, count is:', 2)",
+                action: function() {
+                    const stackItem = addToCallStack("console.log('After increment, count is:', 2)");
+                    
+                    setTimeout(() => {
+                        addToConsoleOutput("After increment, count is: 2");
+                        
+                        // Remove from stack
+                        setTimeout(() => {
+                            removeFromCallStack();
+                            removeFromCallStack(); // Remove setTimeout callback frame
+                        }, 500);
+                    }, 500);
+                }
+            },
+            {
+                description: "Process final microtask: console.log(`Incremented to: ${count}`)",
+                action: function() {
+                    // Add microtask to stack
+                    addToCallStack("Promise callback (from increment A)");
+                    
+                    // Remove microtask from queue
+                    removeFromMicrotaskQueue();
+                    
+                    setTimeout(() => {
+                        // Add console.log to stack
+                        const stackItem = addToCallStack("console.log(`Incremented to: 2`)");
+                        
+                        setTimeout(() => {
+                            // Add to console output
+                            addToConsoleOutput("Incremented to: 2");
+                            
+                            // Remove from stack
+                            setTimeout(() => {
+                                removeFromCallStack();
+                                removeFromCallStack(); // Remove Promise callback frame
+                            }, 500);
+                        }, 500);
+                    }, 500);
+                }
+            }
+        ];
+        
+        // Update step description
+        function updateStepDescription() {
+            document.getElementById('step-description').textContent = 
+                animationSteps[currentStep].description;
+            
+            // Update step indicators
+            const dots = document.querySelectorAll('.step-dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === currentStep);
+            });
+        }
+        
+        // Handle next button click
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (currentStep < animationSteps.length - 1) {
+                currentStep++;
+                updateStepDescription();
+                animationSteps[currentStep].action();
+                
+                // Update button states
+                document.getElementById('prev-btn').disabled = false;
+                if (currentStep === animationSteps.length - 1) {
+                    document.getElementById('next-btn').disabled = true;
+                }
+            }
+        });
+        
+        // Handle previous button click
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                updateStepDescription();
+                
+                // Reset and replay up to current step
+                resetAnimation(true);
+                
+                // Update button states
+                document.getElementById('next-btn').disabled = false;
+                if (currentStep === 0) {
+                    document.getElementById('prev-btn').disabled = true;
+                }
+            }
+        });
+        
+        // Handle reset button click
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            resetAnimation();
+        });
+        
+        // Reset animation
+        function resetAnimation(replay = false) {
+            // Clear all elements
+            document.getElementById('call-stack').innerHTML = '';
+            document.getElementById('microtask-queue').innerHTML = '';
+            document.getElementById('macrotask-queue').innerHTML = '';
+            document.getElementById('console-output').innerHTML = '';
+            document.getElementById('memory-content').innerHTML = '';
+            
+            // Reset step counter if not replaying
+            if (!replay) {
+                currentStep = 0;
+                updateStepDescription();
+                
+                // Reset button states
+                document.getElementById('prev-btn').disabled = true;
+                document.getElementById('next-btn').disabled = false;
+                
+                // Initialize animation
+                animationSteps[0].action();
+            } else {
+                // Replay up to current step
+                for (let i = 0; i <= currentStep; i++) {
+                    setTimeout(() => {
+                        animationSteps[i].action();
+                    }, i * 100);
+                }
+            }
+        }
+        
+        // Initialize
+        updateStepDescription();
+        animationSteps[0].action();
+    </script>
+</body>
+</html>

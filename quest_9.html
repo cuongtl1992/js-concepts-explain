@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Event Loop Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .code-example {
+            background-color: #222;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: monospace;
+            width: 90%;
+            max-width: 600px;
+            white-space: pre;
+            font-size: 16px;
+        }
+        
+        .highlighted {
+            background-color: #ff5722;
+            color: white;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        
+        .animation-container {
+            width: 90%;
+            max-width: 800px;
+            height: 440px;
+            position: relative;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+            padding-top: 20px;
+        }
+        
+        .call-stack, .callback-queue, .console-output {
+            position: absolute;
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .call-stack {
+            width: 240px;
+            height: 200px;
+            left: 50px;
+            top: 100px;
+        }
+        
+        .callback-queue {
+            width: 240px;
+            height: 120px;
+            left: 50px;
+            top: 340px;
+        }
+        
+        .console-output {
+            width: 240px;
+            height: 200px;
+            right: 50px;
+            top: 100px;
+        }
+        
+        .title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+            text-align: center;
+        }
+        
+        .stack-item, .queue-item, .output-item {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            text-align: center;
+        }
+        
+        .stack-item {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        .queue-item {
+            background-color: #2196F3;
+            color: white;
+        }
+        
+        .output-item {
+            background-color: #9C27B0;
+            color: white;
+        }
+        
+        .event-loop {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            left: 350px;
+            top: 210px;
+            border: 4px dashed #FF9800;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #FF9800;
+        }
+        
+        .code-pointer {
+            position: absolute;
+            left: 5px;
+            width: 20px;
+            height: 20px;
+            background-color: #ff5722;
+            clip-path: polygon(0% 0%, 100% 50%, 0% 100%);
+        }
+        
+        .arrow {
+            position: absolute;
+            background-color: #ff9800;
+            width: 60px;
+            height: 4px;
+            opacity: 0;
+        }
+        
+        .arrow::after {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-left: 10px solid #ff9800;
+            border-top: 6px solid transparent;
+            border-bottom: 6px solid transparent;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3367d6;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .explanation {
+            background-color: #e8f4fd;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            max-width: 800px;
+            width: 90%;
+        }
+        
+        .explanation h3 {
+            margin-top: 0;
+            color: #4285f4;
+        }
+        
+        .explanation p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 20px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            width: 0%;
+            background-color: #4285f4;
+            border-radius: 10px;
+        }
+        
+        .step-description {
+            margin-top: 15px;
+            font-weight: bold;
+            height: 40px;
+            text-align: center;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>JavaScript Event Loop Visualization</h1>
+    <div class="subtitle">Understanding why: <code>console.log('Start'); setTimeout(() => console.log('Timeout'), 0); console.log('End');</code> outputs "Start, End, Timeout"</div>
+    
+    <div class="code-example">console.log('Start');
+setTimeout(() => console.log('Timeout'), 0);
+console.log('End');</div>
+    
+    <div class="animation-container">
+        <div class="call-stack">
+            <div class="title">Call Stack</div>
+            <div id="stack-items"></div>
+        </div>
+        
+        <div class="callback-queue">
+            <div class="title">Callback Queue</div>
+            <div id="queue-items"></div>
+        </div>
+        
+        <div class="console-output">
+            <div class="title">Console Output</div>
+            <div id="output-items"></div>
+        </div>
+        
+        <div class="event-loop">Event Loop</div>
+        
+        <div id="code-pointer" class="code-pointer"></div>
+        <div id="stack-to-console" class="arrow"></div>
+        <div id="queue-to-stack" class="arrow"></div>
+        
+        <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+        </div>
+        
+        <div id="step-description" class="step-description">Press Start to begin animation</div>
+    </div>
+    
+    <div class="controls">
+        <button id="start-btn">Start Animation</button>
+        <button id="reset-btn" disabled>Reset</button>
+    </div>
+    
+    <div class="explanation">
+        <h3>Why is the output "Start, End, Timeout"?</h3>
+        <p><strong>1. Execution Context:</strong> JavaScript is single-threaded, which means it can only execute one piece of code at a time.</p>
+        <p><strong>2. Call Stack:</strong> When a function is called, it's pushed to the call stack. When it returns, it's popped off.</p>
+        <p><strong>3. Event Loop:</strong> Checks if the call stack is empty, then takes the first callback from the queue and pushes it to the stack.</p>
+        <p><strong>4. setTimeout:</strong> Even with a delay of 0ms, the callback is placed in the callback queue and waits for the call stack to be empty.</p>
+        <p><strong>5. Synchronous before Asynchronous:</strong> All synchronous code executes before any asynchronous callbacks, which is why "Start" and "End" appear before "Timeout".</p>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('start-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const stackItems = document.getElementById('stack-items');
+            const queueItems = document.getElementById('queue-items');
+            const outputItems = document.getElementById('output-items');
+            const codePointer = document.getElementById('code-pointer');
+            const stackToConsole = document.getElementById('stack-to-console');
+            const queueToStack = document.getElementById('queue-to-stack');
+            const progress = document.getElementById('progress');
+            const stepDescription = document.getElementById('step-description');
+            
+            // Set initial positions for code pointer
+            codePointer.style.top = '20px';
+            
+            let timeline;
+            
+            startBtn.addEventListener('click', function() {
+                startAnimation();
+                startBtn.disabled = true;
+                resetBtn.disabled = false;
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                resetAnimation();
+                startBtn.disabled = false;
+                resetBtn.disabled = true;
+            });
+            
+            function addStackItem(text) {
+                const item = document.createElement('div');
+                item.className = 'stack-item';
+                item.textContent = text;
+                stackItems.prepend(item);
+                return item;
+            }
+            
+            function addQueueItem(text) {
+                const item = document.createElement('div');
+                item.className = 'queue-item';
+                item.textContent = text;
+                queueItems.appendChild(item);
+                return item;
+            }
+            
+            function addOutputItem(text) {
+                const item = document.createElement('div');
+                item.className = 'output-item';
+                item.textContent = text;
+                outputItems.appendChild(item);
+                return item;
+            }
+            
+            function startAnimation() {
+                // Clear previous animation if any
+                if (timeline) timeline.kill();
+                
+                // Create new timeline
+                timeline = gsap.timeline({
+                    onUpdate: function() {
+                        // Update progress bar
+                        progress.style.width = timeline.progress() * 100 + '%';
+                    }
+                });
+                
+                // Initial setup - Main function added to call stack
+                const mainFunction = addStackItem('main()');
+                
+                // Step 1: console.log('Start') execution
+                timeline.to(codePointer, {
+                    top: '20px',
+                    opacity: 1,
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "1. JavaScript engine starts executing the main script";
+                    }
+                });
+                
+                // Add console.log('Start') to call stack
+                timeline.add(function() {
+                    const logStart = addStackItem("console.log('Start')");
+                    stepDescription.textContent = "2. console.log('Start') is pushed to the call stack";
+                });
+                
+                // Execute console.log('Start') and add to console output
+                timeline.to(stackToConsole, {
+                    left: '300px',
+                    top: '200px',
+                    width: '60px',
+                    opacity: 1,
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "3. console.log('Start') executes and outputs to console";
+                    }
+                });
+                
+                timeline.add(function() {
+                    addOutputItem("Start");
+                });
+                
+                // Remove arrow and console.log('Start') from stack
+                timeline.to(stackToConsole, {
+                    opacity: 0,
+                    duration: 0.3
+                });
+                
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "4. console.log('Start') is popped off the call stack";
+                });
+                
+                // Step 2: setTimeout execution
+                timeline.to(codePointer, {
+                    top: '38px',
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "5. Moving to the setTimeout line";
+                    }
+                });
+                
+                // Add setTimeout to call stack
+                timeline.add(function() {
+                    const setTimeout = addStackItem("setTimeout(callback, 0)");
+                    stepDescription.textContent = "6. setTimeout is pushed to the call stack";
+                });
+                
+                // Move callback to callback queue
+                timeline.add(function() {
+                    stepDescription.textContent = "7. setTimeout schedules the callback in the Web APIs";
+                }, "+=0.5");
+                
+                timeline.add(function() {
+                    addQueueItem("() => console.log('Timeout')");
+                    stepDescription.textContent = "8. Callback is moved to the Callback Queue";
+                }, "+=0.5");
+                
+                // Remove setTimeout from stack
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "9. setTimeout is popped off the call stack";
+                }, "+=0.5");
+                
+                // Step 3: console.log('End') execution
+                timeline.to(codePointer, {
+                    top: '56px',
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "10. Moving to console.log('End')";
+                    }
+                });
+                
+                // Add console.log('End') to call stack
+                timeline.add(function() {
+                    const logEnd = addStackItem("console.log('End')");
+                    stepDescription.textContent = "11. console.log('End') is pushed to the call stack";
+                });
+                
+                // Execute console.log('End') and add to console output
+                timeline.to(stackToConsole, {
+                    left: '300px',
+                    top: '200px',
+                    width: '60px',
+                    opacity: 1,
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "12. console.log('End') executes and outputs to console";
+                    }
+                });
+                
+                timeline.add(function() {
+                    addOutputItem("End");
+                });
+                
+                // Remove arrow and console.log('End') from stack
+                timeline.to(stackToConsole, {
+                    opacity: 0,
+                    duration: 0.3
+                });
+                
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "13. console.log('End') is popped off the call stack";
+                });
+                
+                // Remove main function from stack
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "14. Main script execution completes and is popped off the call stack";
+                }, "+=0.5");
+                
+                // Step 4: Event loop checks for callbacks
+                timeline.add(function() {
+                    gsap.to(".event-loop", {
+                        rotation: 360,
+                        duration: 1.5,
+                        ease: "none",
+                        repeat: 1
+                    });
+                    stepDescription.textContent = "15. Event loop checks if call stack is empty and looks for callbacks";
+                });
+                
+                // Move callback from queue to call stack
+                timeline.to(queueToStack, {
+                    left: '170px',
+                    top: '250px',
+                    width: '100px',
+                    opacity: 1,
+                    duration: 0.7,
+                    onStart: function() {
+                        stepDescription.textContent = "16. Event loop moves callback from queue to call stack";
+                    }
+                }, "+=1");
+                
+                timeline.add(function() {
+                    queueItems.removeChild(queueItems.firstChild);
+                    addStackItem("() => console.log('Timeout')");
+                    queueToStack.style.opacity = 0;
+                });
+                
+                // Add console.log('Timeout') to call stack
+                timeline.add(function() {
+                    const logTimeout = addStackItem("console.log('Timeout')");
+                    stepDescription.textContent = "17. console.log('Timeout') is pushed to the call stack";
+                }, "+=0.5");
+                
+                // Execute console.log('Timeout') and add to console output
+                timeline.to(stackToConsole, {
+                    left: '300px',
+                    top: '200px',
+                    width: '60px',
+                    opacity: 1,
+                    duration: 0.5,
+                    onStart: function() {
+                        stepDescription.textContent = "18. console.log('Timeout') executes and outputs to console";
+                    }
+                });
+                
+                timeline.add(function() {
+                    addOutputItem("Timeout");
+                });
+                
+                // Remove arrow and console.log('Timeout') from stack
+                timeline.to(stackToConsole, {
+                    opacity: 0,
+                    duration: 0.3
+                });
+                
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "19. console.log('Timeout') is popped off the call stack";
+                });
+                
+                // Remove callback from stack
+                timeline.add(function() {
+                    stackItems.removeChild(stackItems.firstChild);
+                    stepDescription.textContent = "20. Callback function execution completes";
+                }, "+=0.5");
+                
+                // Final step
+                timeline.add(function() {
+                    stepDescription.textContent = "Complete! Output: Start, End, Timeout";
+                }, "+=0.5");
+            }
+            
+            function resetAnimation() {
+                // Kill current timeline
+                if (timeline) timeline.kill();
+                
+                // Reset DOM
+                stackItems.innerHTML = '';
+                queueItems.innerHTML = '';
+                outputItems.innerHTML = '';
+                codePointer.style.opacity = 0;
+                stackToConsole.style.opacity = 0;
+                queueToStack.style.opacity = 0;
+                
+                // Reset progress bar
+                progress.style.width = '0%';
+                
+                // Reset description
+                stepDescription.textContent = 'Press Start to begin animation';
+            }
+        });
+    </script>
+</body>
+</html>

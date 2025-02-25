@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debounce Animation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .demo-container {
+            display: flex;
+            width: 100%;
+            justify-content: space-between;
+            margin-bottom: 40px;
+        }
+        .demo-section {
+            width: 48%;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #3498db;
+            margin-top: 0;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .request-container {
+            height: 250px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border: 1px solid #eaeaea;
+        }
+        .request {
+            position: absolute;
+            left: 10px;
+            width: 20px;
+            height: 20px;
+            background-color: #e74c3c;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        .api-server {
+            height: 60px;
+            width: 100%;
+            background-color: #2c3e50;
+            border-radius: 5px;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+        }
+        .alert {
+            padding: 10px 15px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 5px;
+            position: absolute;
+            bottom: 110px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            z-index: 10;
+        }
+        .section-label {
+            position: absolute;
+            top: -12px;
+            left: 20px;
+            background: #e74c3c;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .timer-bar {
+            position: absolute;
+            bottom: 95px;
+            left: 10%;
+            width: 80%;
+            height: 5px;
+            background-color: #ecf0f1;
+            border-radius: 5px;
+            overflow: hidden;
+            display: none;
+        }
+        .timer-progress {
+            height: 100%;
+            width: 0;
+            background-color: #3498db;
+        }
+        .explanation {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        code {
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+        .code-block {
+            background-color: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            overflow-x: auto;
+            border-left: 4px solid #3498db;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+        .click-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #3498db;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+        }
+        .clear-btn {
+            background-color: #7f8c8d;
+            margin-top: 10px;
+        }
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+            width: 100%;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #ecf0f1;
+            border-radius: 5px 5px 0 0;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: white;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Understanding Debounce for API Calls</h1>
+    
+    <div class="tab-container">
+        <div class="tab active" onclick="showTab('animation')">Animation Demo</div>
+        <div class="tab" onclick="showTab('code')">Code Comparison</div>
+    </div>
+    
+    <div id="animation-tab" class="tab-content active">
+        <div class="demo-container">
+            <div class="demo-section">
+                <div class="section-label">Without Debounce</div>
+                <h2>Regular Submit</h2>
+                <button id="regularBtn">Click Repeatedly</button>
+                <div class="click-counter" id="regularCounter">Clicks: 0</div>
+                <div class="request-container" id="regularRequests"></div>
+                <div class="api-server">API Server</div>
+                <div class="alert" id="regularAlert">Updated Successfully</div>
+                <button class="clear-btn" onclick="clearRegular()">Reset</button>
+            </div>
+            
+            <div class="demo-section">
+                <div class="section-label">With Debounce</div>
+                <h2>Debounced Submit</h2>
+                <button id="debounceBtn">Click Repeatedly</button>
+                <div class="click-counter" id="debounceCounter">Clicks: 0</div>
+                <div class="timer-bar" id="timerBar">
+                    <div class="timer-progress" id="timerProgress"></div>
+                </div>
+                <div class="request-container" id="debounceRequests"></div>
+                <div class="api-server">API Server</div>
+                <div class="alert" id="debounceAlert">Updated Successfully</div>
+                <button class="clear-btn" onclick="clearDebounced()">Reset</button>
+            </div>
+        </div>
+        
+        <div class="explanation">
+            <h2>What is Debouncing?</h2>
+            <p>Debouncing is a programming technique that ensures a function doesn't get executed too frequently. It's particularly useful when handling user inputs like button clicks, search inputs, or window resizing.</p>
+            
+            <h3>The Problem:</h3>
+            <p>In the animation above, you can see what happens when a user clicks a submit button multiple times in quick succession:</p>
+            <ul>
+                <li><strong>Without debounce:</strong> Each click sends an API request immediately, potentially overwhelming the server and showing multiple "Success" alerts to the user.</li>
+                <li><strong>With debounce:</strong> Multiple clicks within a short time window (500ms in this example) are grouped together, and only one API request is sent after the user stops clicking.</li>
+            </ul>
+            
+            <h3>Benefits of Debouncing:</h3>
+            <ul>
+                <li>Reduces unnecessary API calls, saving server resources</li>
+                <li>Improves user experience by preventing multiple redundant alerts</li>
+                <li>Particularly useful for search inputs, form submissions, and other interactive elements</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div id="code-tab" class="tab-content">
+        <div class="explanation">
+            <h2>Code Comparison</h2>
+            
+            <h3>Without Debounce</h3>
+            <div class="code-block">// HTML
+&lt;button id="actionBtn"&gt;Submit&lt;/button&gt;
+
+// JavaScript
+function submitAction() {
+    fetch('/api/update', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => alert('Cập nhật thành công'));
+}
+
+document.getElementById('actionBtn')
+    .addEventListener('click', submitAction);</div>
+            
+            <p>In this implementation, every button click triggers an immediate API call. If a user clicks multiple times quickly, multiple API requests will be sent.</p>
+            
+            <h3>With Debounce</h3>
+            <div class="code-block">// HTML
+&lt;button id="actionBtn"&gt;Submit&lt;/button&gt;
+
+// JavaScript
+function debounce(func, delay) {
+    let timer;
+    return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+function submitAction() {
+    fetch('/api/update', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => alert('Cập nhật thành công'));
+}
+
+const debouncedSubmit = debounce(submitAction, 500);
+
+document.getElementById('actionBtn')
+    .addEventListener('click', debouncedSubmit);</div>
+            
+            <h3>How Debounce Works:</h3>
+            <ol>
+                <li>When the button is clicked, a timer starts (500ms in this example)</li>
+                <li>If another click happens before the timer completes, the previous timer is canceled and a new one starts</li>
+                <li>The API call only executes after 500ms of inactivity (no more clicks)</li>
+                <li>This ensures only one API call happens even if the user clicks multiple times</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        // Variables for both demos
+        let regularCount = 0;
+        let debounceCount = 0;
+        const regularCounter = document.getElementById('regularCounter');
+        const debounceCounter = document.getElementById('debounceCounter');
+        const regularRequests = document.getElementById('regularRequests');
+        const debounceRequests = document.getElementById('debounceRequests');
+        const regularAlert = document.getElementById('regularAlert');
+        const debounceAlert = document.getElementById('debounceAlert');
+        const timerBar = document.getElementById('timerBar');
+        const timerProgress = document.getElementById('timerProgress');
+        let debounceTimer;
+        
+        // Set up GSAP timeline
+        const timeline = gsap.timeline();
+        
+        // Regular Submit button functionality
+        document.getElementById('regularBtn').addEventListener('click', function() {
+            regularCount++;
+            regularCounter.textContent = `Clicks: ${regularCount}`;
+            
+            // Create a new request circle
+            const request = document.createElement('div');
+            request.className = 'request';
+            request.style.top = '10px';
+            regularRequests.appendChild(request);
+            
+            // Animate the request to the server
+            gsap.set(request, { opacity: 1 });
+            gsap.to(request, {
+                duration: 1,
+                top: '230px',
+                ease: 'power1.inOut',
+                onComplete: function() {
+                    // Show success alert
+                    gsap.to(regularAlert, {
+                        duration: 0.3,
+                        scale: 1,
+                        opacity: 1,
+                        onComplete: function() {
+                            gsap.to(regularAlert, {
+                                duration: 0.3,
+                                scale: 0,
+                                opacity: 0,
+                                delay: 1
+                            });
+                        }
+                    });
+                    
+                    // Remove the request
+                    gsap.to(request, {
+                        duration: 0.3,
+                        opacity: 0,
+                        delay: 1,
+                        onComplete: function() {
+                            request.remove();
+                        }
+                    });
+                }
+            });
+        });
+        
+        // Debounced Submit button functionality
+        document.getElementById('debounceBtn').addEventListener('click', function() {
+            debounceCount++;
+            debounceCounter.textContent = `Clicks: ${debounceCount}`;
+            
+            // Create a new request circle (but don't send it yet)
+            const request = document.createElement('div');
+            request.className = 'request';
+            request.style.top = '10px';
+            debounceRequests.appendChild(request);
+            
+            // Make the request visible
+            gsap.set(request, { opacity: 1 });
+            
+            // Clear previous timer
+            clearTimeout(debounceTimer);
+            
+            // Reset timer bar
+            timerBar.style.display = 'block';
+            gsap.to(timerProgress, { width: 0, duration: 0 });
+            
+            // Animate timer progress
+            gsap.to(timerProgress, {
+                duration: 0.5,
+                width: '100%',
+                ease: 'linear'
+            });
+            
+            // Set a new timer
+            debounceTimer = setTimeout(function() {
+                // Hide timer bar
+                gsap.to(timerBar, {
+                    duration: 0.3,
+                    opacity: 0,
+                    onComplete: function() {
+                        timerBar.style.display = 'none';
+                        timerBar.style.opacity = 1;
+                    }
+                });
+                
+                // Get all pending requests
+                const requests = debounceRequests.querySelectorAll('.request');
+                
+                // Only animate the last request
+                if (requests.length > 0) {
+                    const lastRequest = requests[requests.length - 1];
+                    
+                    // Fade out all but the last request
+                    requests.forEach(req => {
+                        if (req !== lastRequest) {
+                            gsap.to(req, {
+                                duration: 0.3,
+                                opacity: 0,
+                                onComplete: function() {
+                                    req.remove();
+                                }
+                            });
+                        }
+                    });
+                    
+                    // Animate the last request to the server
+                    gsap.to(lastRequest, {
+                        duration: 1,
+                        top: '230px',
+                        ease: 'power1.inOut',
+                        onComplete: function() {
+                            // Show success alert
+                            gsap.to(debounceAlert, {
+                                duration: 0.3,
+                                scale: 1,
+                                opacity: 1,
+                                onComplete: function() {
+                                    gsap.to(debounceAlert, {
+                                        duration: 0.3,
+                                        scale: 0,
+                                        opacity: 0,
+                                        delay: 1
+                                    });
+                                }
+                            });
+                            
+                            // Remove the request
+                            gsap.to(lastRequest, {
+                                duration: 0.3,
+                                opacity: 0,
+                                delay: 1,
+                                onComplete: function() {
+                                    lastRequest.remove();
+                                }
+                            });
+                        }
+                    });
+                }
+            }, 500);
+        });
+        
+        // Function to clear the regular demo
+        function clearRegular() {
+            regularCount = 0;
+            regularCounter.textContent = `Clicks: 0`;
+            
+            // Remove all requests
+            const requests = regularRequests.querySelectorAll('.request');
+            requests.forEach(req => req.remove());
+            
+            // Reset alert
+            gsap.set(regularAlert, { scale: 0, opacity: 0 });
+        }
+        
+        // Function to clear the debounced demo
+        function clearDebounced() {
+            debounceCount = 0;
+            debounceCounter.textContent = `Clicks: 0`;
+            
+            // Remove all requests
+            const requests = debounceRequests.querySelectorAll('.request');
+            requests.forEach(req => req.remove());
+            
+            // Reset alert and timer
+            gsap.set(debounceAlert, { scale: 0, opacity: 0 });
+            clearTimeout(debounceTimer);
+            timerBar.style.display = 'none';
+            gsap.set(timerProgress, { width: 0 });
+        }
+        
+        // Function to switch tabs
+        function showTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Activate selected tab
+            document.querySelector(`.tab[onclick="showTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+        }
+    </script>
+</body>
+</html>

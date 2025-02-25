@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript var vs let in Loops</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            text-align: center;
+            max-width: 800px;
+        }
+        
+        .code-example {
+            background-color: #282c34;
+            color: #abb2bf;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            width: 90%;
+            max-width: 800px;
+            white-space: pre-wrap;
+            font-size: 14px;
+            overflow-x: auto;
+            position: relative;
+        }
+        
+        .code-highlight {
+            position: absolute;
+            background-color: rgba(255, 193, 7, 0.2);
+            border-radius: 4px;
+            pointer-events: none;
+        }
+        
+        .var-keyword {
+            color: #c678dd;
+            font-weight: bold;
+        }
+        
+        .let-keyword {
+            color: #56b6c2;
+            font-weight: bold;
+        }
+        
+        .function-name {
+            color: #61afef;
+        }
+        
+        .string {
+            color: #98c379;
+        }
+        
+        .comment {
+            color: #7f848e;
+            font-style: italic;
+        }
+        
+        .animation-container {
+            width: 90%;
+            max-width: 800px;
+            height: 600px;
+            position: relative;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .execution-environment {
+            display: flex;
+            flex: 1;
+            margin-top: 20px;
+        }
+        
+        .global-scope, .callback-queue, .event-loop, .console-output {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .global-scope {
+            width: 250px;
+            margin-right: 20px;
+        }
+        
+        .callback-container {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        
+        .callback-queue {
+            height: 180px;
+            margin-bottom: 10px;
+            overflow-y: auto;
+        }
+        
+        .event-loop {
+            height: 80px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .console-output {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #555;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        
+        .scope-item, .closure-item, .callback-item, .output-item {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        
+        .scope-item {
+            background-color: #e3f2fd;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .var-scope-item {
+            background-color: #ffebee;
+        }
+        
+        .let-scope-item {
+            background-color: #e8f5e9;
+        }
+        
+        .closure-container {
+            margin-top: 10px;
+            padding: 5px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+            background-color: #f5f5f5;
+        }
+        
+        .closure-title {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .callback-item {
+            background-color: #fff3e0;
+            border-left: 3px solid #ff9800;
+        }
+        
+        .callback-inner {
+            margin-top: 5px;
+            padding: 5px;
+            background-color: #fff8e1;
+            border-radius: 2px;
+            font-size: 12px;
+        }
+        
+        .output-item {
+            background-color: #f3e5f5;
+            border-left: 3px solid #9c27b0;
+        }
+        
+        .var-output {
+            border-left-color: #f44336;
+        }
+        
+        .let-output {
+            border-left-color: #4caf50;
+        }
+        
+        .event-loop-circle {
+            width: 60px;
+            height: 60px;
+            border: 3px dashed #ff9800;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ff9800;
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3367d6;
+        }
+        
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+        }
+        
+        .progress {
+            height: 100%;
+            width: 0%;
+            background-color: #4285f4;
+            border-radius: 10px;
+        }
+        
+        .step-description {
+            margin-top: 15px;
+            font-weight: bold;
+            height: 40px;
+            text-align: center;
+            color: #555;
+        }
+        
+        .explanation {
+            background-color: #e8f4fd;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+            max-width: 800px;
+            width: 90%;
+        }
+        
+        .explanation h3 {
+            margin-top: 0;
+            color: #4285f4;
+        }
+        
+        .explanation p {
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .fetch-animation {
+            position: absolute;
+            background-color: #4caf50;
+            color: white;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 12px;
+            opacity: 0;
+        }
+        
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .rotating {
+            animation: rotate 2s linear infinite;
+        }
+    </style>
+</head>
+<body>
+    <h1>JavaScript: var vs let in Loops with Asynchronous Callbacks</h1>
+    <div class="subtitle">Understanding the difference between var and let scope in loops when used with asynchronous operations like fetch</div>
+    
+    <div class="code-example" id="code-example">
+<span class="comment">// Loop with var</span>
+<span class="var-keyword">for</span> (<span class="var-keyword">var</span> i = 0; i < 3; i++) {
+    <span class="function-name">fetch</span>(<span class="string">'https://jsonplaceholder.typicode.com/todos/1'</span>)
+        .<span class="function-name">then</span>(response => response.json())
+        .<span class="function-name">then</span>(data => <span class="function-name">console.log</span>(<span class="string">'var i:'</span>, i))
+        .<span class="function-name">catch</span>(error => <span class="function-name">console.error</span>(error));
+}
+
+<span class="comment">// Loop with let</span>
+<span class="let-keyword">for</span> (<span class="let-keyword">let</span> j = 0; j < 3; j++) {
+    <span class="function-name">fetch</span>(<span class="string">'https://jsonplaceholder.typicode.com/todos/1'</span>)
+        .<span class="function-name">then</span>(response => response.json())
+        .<span class="function-name">then</span>(data => <span class="function-name">console.log</span>(<span class="string">'let j:'</span>, j))
+        .<span class="function-name">catch</span>(error => <span class="function-name">console.error</span>(error));
+}</div>
+    
+    <div class="animation-container">
+        <div class="execution-environment">
+            <div class="global-scope">
+                <div class="title">Global Scope</div>
+                <div id="scope-items"></div>
+            </div>
+            
+            <div class="callback-container">
+                <div class="callback-queue">
+                    <div class="title">Callback Queue (Fetch Promises)</div>
+                    <div id="callback-items"></div>
+                </div>
+                
+                <div class="event-loop">
+                    <div class="title">Event Loop</div>
+                    <div class="event-loop-circle" id="event-loop-circle">Loop</div>
+                </div>
+                
+                <div class="console-output">
+                    <div class="title">Console Output</div>
+                    <div id="output-items"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="progress-bar">
+            <div id="progress" class="progress"></div>
+        </div>
+        
+        <div id="step-description" class="step-description">Press Start to begin animation</div>
+    </div>
+    
+    <div class="controls">
+        <button id="start-btn">Start Animation</button>
+        <button id="reset-btn" disabled>Reset</button>
+    </div>
+    
+    <div class="explanation">
+        <h3>Why does var output "3, 3, 3" while let outputs "0, 1, 2"?</h3>
+        <p><strong>The key difference is in how var and let create variable scope:</strong></p>
+        <p><strong>1. var scope:</strong> Variables declared with var are function-scoped, not block-scoped. They "hoist" to the top of the function (or global scope).</p>
+        <p><strong>2. let scope:</strong> Variables declared with let are block-scoped, meaning they only exist within the block (like a for loop) where they're declared.</p>
+        <p><strong>3. Closures with var:</strong> When using var in a loop, all callbacks created in the loop share the same variable reference. By the time the callbacks run, the loop has completed and i = 3.</p>
+        <p><strong>4. Closures with let:</strong> When using let in a loop, each iteration creates a new "environment" with its own copy of the variable. Each callback captures its own unique j value (0, 1, or 2).</p>
+        <p><strong>5. Asynchronous execution:</strong> The fetch callbacks execute after the loops complete. By then, var i is 3, but each let j preserved its value at the time of callback creation.</p>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const startBtn = document.getElementById('start-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const scopeItems = document.getElementById('scope-items');
+            const callbackItems = document.getElementById('callback-items');
+            const outputItems = document.getElementById('output-items');
+            const eventLoopCircle = document.getElementById('event-loop-circle');
+            const progress = document.getElementById('progress');
+            const stepDescription = document.getElementById('step-description');
+            const codeExample = document.getElementById('code-example');
+            
+            let timeline;
+            let codeHighlight;
+            
+            function createCodeHighlight() {
+                if (!codeHighlight) {
+                    codeHighlight = document.createElement('div');
+                    codeHighlight.className = 'code-highlight';
+                    codeExample.appendChild(codeHighlight);
+                }
+                return codeHighlight;
+            }
+            
+            function highlightCode(lineStart, lineEnd, duration = 1) {
+                const highlight = createCodeHighlight();
+                
+                // Get line heights and positions
+                const lineHeight = 22; // Approximate line height in pixels
+                const topOffset = (lineStart - 1) * lineHeight;
+                const height = (lineEnd - lineStart + 1) * lineHeight;
+                
+                // Apply highlight
+                gsap.to(highlight, {
+                    top: topOffset,
+                    height: height,
+                    width: '100%',
+                    opacity: 1,
+                    duration: 0.3
+                });
+                
+                // Return a promise that resolves after the specified duration
+                return new Promise(resolve => {
+                    setTimeout(resolve, duration * 1000);
+                });
+            }
+            
+            function removeHighlight() {
+                if (codeHighlight) {
+                    gsap.to(codeHighlight, {
+                        opacity: 0,
+                        duration: 0.3
+                    });
+                }
+            }
+            
+            function addScopeItem(name, value, type = 'normal') {
+                const item = document.createElement('div');
+                item.className = `scope-item ${type === 'var' ? 'var-scope-item' : type === 'let' ? 'let-scope-item' : ''}`;
+                
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = name;
+                
+                const valueSpan = document.createElement('span');
+                valueSpan.textContent = value;
+                
+                item.appendChild(nameSpan);
+                item.appendChild(valueSpan);
+                
+                scopeItems.appendChild(item);
+                return item;
+            }
+            
+            function updateScopeItem(item, value) {
+                const valueSpan = item.querySelector('span:nth-child(2)');
+                valueSpan.textContent = value;
+                
+                // Flash effect
+                gsap.fromTo(item, {backgroundColor: '#ffff00'}, {backgroundColor: item.classList.contains('var-scope-item') ? '#ffebee' : item.classList.contains('let-scope-item') ? '#e8f5e9' : '#e3f2fd', duration: 0.5});
+            }
+            
+            function addCallback(iteration, variableType, capturedValue) {
+                const item = document.createElement('div');
+                item.className = 'callback-item';
+                item.innerHTML = `
+                    <div>fetch callback #${iteration + 1} (${variableType})</div>
+                    <div class="callback-inner">Captured value: ${variableType === 'var' ? 'i' : 'j'} = ${capturedValue}</div>
+                `;
+                callbackItems.appendChild(item);
+                return item;
+            }
+            
+            function addOutputItem(text, type = 'normal') {
+                const item = document.createElement('div');
+                item.className = `output-item ${type === 'var' ? 'var-output' : type === 'let' ? 'let-output' : ''}`;
+                item.textContent = text;
+                outputItems.appendChild(item);
+                return item;
+            }
+            
+            function createFetchAnimation(iteration, variableType) {
+                const fetch = document.createElement('div');
+                fetch.className = 'fetch-animation';
+                fetch.textContent = `Fetching ${variableType} ${iteration}`;
+                document.querySelector('.animation-container').appendChild(fetch);
+                
+                // Starting position (near the fetch calls in the code)
+                const yPos = variableType === 'var' ? 120 : 320;
+                
+                gsap.set(fetch, {
+                    x: 100, 
+                    y: yPos, 
+                    opacity: 0
+                });
+                
+                // Animate the fetch request
+                const fetchTl = gsap.timeline();
+                
+                fetchTl.to(fetch, {
+                    opacity: 1,
+                    duration: 0.3
+                });
+                
+                fetchTl.to(fetch, {
+                    x: 400,
+                    y: 200,
+                    duration: 1,
+                    ease: "power1.inOut"
+                });
+                
+                fetchTl.to(fetch, {
+                    opacity: 0,
+                    duration: 0.3,
+                    onComplete: function() {
+                        fetch.remove();
+                    }
+                });
+                
+                return fetchTl;
+            }
+            
+            startBtn.addEventListener('click', function() {
+                startAnimation();
+                startBtn.disabled = true;
+                resetBtn.disabled = false;
+            });
+            
+            resetBtn.addEventListener('click', function() {
+                resetAnimation();
+                startBtn.disabled = false;
+                resetBtn.disabled = true;
+            });
+            
+            async function startAnimation() {
+                // Clear previous animation if any
+                if (timeline) timeline.kill();
+                
+                // Create new timeline
+                timeline = gsap.timeline({
+                    onUpdate: function() {
+                        // Update progress bar
+                        progress.style.width = timeline.progress() * 100 + '%';
+                    }
+                });
+                
+                // Stage 1: Initialize environment
+                stepDescription.textContent = "1. Starting execution - Global scope initialization";
+                await highlightCode(1, 1, 1);
+                
+                // Stage 2: First var loop (i = 0)
+                stepDescription.textContent = "2. Entering var loop with i = 0";
+                await highlightCode(2, 2, 1);
+                const iVariable = addScopeItem('var i', '0', 'var');
+                await highlightCode(3, 6, 1.5);
+                
+                // Create first var fetch call
+                createFetchAnimation(0, 'var');
+                const varCallback0 = addCallback(0, 'var', 'reference to i');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 3: First var loop (i = 1)
+                stepDescription.textContent = "3. var loop with i = 1";
+                await highlightCode(2, 2, 1);
+                updateScopeItem(iVariable, '1');
+                await highlightCode(3, 6, 1.5);
+                
+                // Create second var fetch call
+                createFetchAnimation(1, 'var');
+                const varCallback1 = addCallback(1, 'var', 'reference to i');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 4: First var loop (i = 2)
+                stepDescription.textContent = "4. var loop with i = 2";
+                await highlightCode(2, 2, 1);
+                updateScopeItem(iVariable, '2');
+                await highlightCode(3, 6, 1.5);
+                
+                // Create third var fetch call
+                createFetchAnimation(2, 'var');
+                const varCallback2 = addCallback(2, 'var', 'reference to i');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 5: var loop ends
+                stepDescription.textContent = "5. var loop completes, i becomes 3";
+                await highlightCode(2, 2, 1);
+                updateScopeItem(iVariable, '3');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Stage 6: let loop starts
+                stepDescription.textContent = "6. Entering let loop with j = 0";
+                await highlightCode(9, 9, 1);
+                
+                // Create block-scoped environment for let
+                const letBlock0 = document.createElement('div');
+                letBlock0.className = 'closure-container';
+                letBlock0.innerHTML = `
+                    <div class="closure-title">Block Scope (iteration 0)</div>
+                    <div class="scope-item let-scope-item">
+                        <span>let j</span>
+                        <span>0</span>
+                    </div>
+                `;
+                scopeItems.appendChild(letBlock0);
+                
+                await highlightCode(10, 13, 1.5);
+                
+                // Create first let fetch call
+                createFetchAnimation(0, 'let');
+                const letCallback0 = addCallback(0, 'let', '0 (captured copy)');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 7: let loop (j = 1)
+                stepDescription.textContent = "7. let loop with j = 1";
+                await highlightCode(9, 9, 1);
+                
+                // Create new block-scoped environment
+                const letBlock1 = document.createElement('div');
+                letBlock1.className = 'closure-container';
+                letBlock1.innerHTML = `
+                    <div class="closure-title">Block Scope (iteration 1)</div>
+                    <div class="scope-item let-scope-item">
+                        <span>let j</span>
+                        <span>1</span>
+                    </div>
+                `;
+                scopeItems.appendChild(letBlock1);
+                
+                await highlightCode(10, 13, 1.5);
+                
+                // Create second let fetch call
+                createFetchAnimation(1, 'let');
+                const letCallback1 = addCallback(1, 'let', '1 (captured copy)');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 8: let loop (j = 2)
+                stepDescription.textContent = "8. let loop with j = 2";
+                await highlightCode(9, 9, 1);
+                
+                // Create new block-scoped environment
+                const letBlock2 = document.createElement('div');
+                letBlock2.className = 'closure-container';
+                letBlock2.innerHTML = `
+                    <div class="closure-title">Block Scope (iteration 2)</div>
+                    <div class="scope-item let-scope-item">
+                        <span>let j</span>
+                        <span>2</span>
+                    </div>
+                `;
+                scopeItems.appendChild(letBlock2);
+                
+                await highlightCode(10, 13, 1.5);
+                
+                // Create third let fetch call
+                createFetchAnimation(2, 'let');
+                const letCallback2 = addCallback(2, 'let', '2 (captured copy)');
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Stage 9: let loop ends
+                stepDescription.textContent = "9. let loop completes";
+                await highlightCode(9, 9, 1);
+                removeHighlight();
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                
+                // Stage 10: Event loop starts processing callbacks
+                stepDescription.textContent = "10. Synchronous code finished. Event loop processes callbacks";
+                eventLoopCircle.classList.add('rotating');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                
+                // Process var callbacks
+                stepDescription.textContent = "11. Processing var callbacks - All reference the same i = 3";
+                gsap.to(varCallback0, {
+                    backgroundColor: '#ffcc80',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("var i: 3", 'var');
+                        gsap.to(varCallback0, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                gsap.to(varCallback1, {
+                    backgroundColor: '#ffcc80',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("var i: 3", 'var');
+                        gsap.to(varCallback1, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                gsap.to(varCallback2, {
+                    backgroundColor: '#ffcc80',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("var i: 3", 'var');
+                        gsap.to(varCallback2, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Process let callbacks
+                stepDescription.textContent = "12. Processing let callbacks - Each has its own captured j value";
+                gsap.to(letCallback0, {
+                    backgroundColor: '#a5d6a7',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("let j: 0", 'let');
+                        gsap.to(letCallback0, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                gsap.to(letCallback1, {
+                    backgroundColor: '#a5d6a7',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("let j: 1", 'let');
+                        gsap.to(letCallback1, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                gsap.to(letCallback2, {
+                    backgroundColor: '#a5d6a7',
+                    duration: 0.5,
+                    onComplete: function() {
+                        addOutputItem("let j: 2", 'let');
+                        gsap.to(letCallback2, {
+                            opacity: 0.5,
+                            backgroundColor: '#fff3e0',
+                            duration: 0.5
+                        });
+                    }
+                });
+                await new Promise(resolve => setTimeout(resolve, 1500));
+                
+                // Animation complete
+                eventLoopCircle.classList.remove('rotating');
+                stepDescription.textContent = "Complete! Output: var i: 3,3,3 and let j: 0,1,2";
+                
+                // Update progress bar to 100%
+                gsap.to(progress, {
+                    width: '100%',
+                    duration: 0.5
+                });
+            }
+            
+            function resetAnimation() {
+                // Kill current timeline
+                if (timeline) timeline.kill();
+                
+                // Reset DOM
+                scopeItems.innerHTML = '';
+                callbackItems.innerHTML = '';
+                outputItems.innerHTML = '';
+                eventLoopCircle.classList.remove('rotating');
+                removeHighlight();
+                
+                // Reset progress bar
+                gsap.to(progress, {
+                    width: '0%',
+                    duration: 0.3
+                });
+                
+                // Reset description
+                stepDescription.textContent = 'Press Start to begin animation';
+            }
+        });
+    </script>
+</body>
+</html>

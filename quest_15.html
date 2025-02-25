@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Leak from Uncleaned Timers</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .code-container {
+            background-color: #282c34;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+            font-family: monospace;
+            position: relative;
+            overflow: hidden;
+        }
+        .code {
+            line-height: 1.5;
+            white-space: pre;
+            overflow-x: auto;
+        }
+        .highlight {
+            background-color: rgba(255, 200, 50, 0.3);
+            padding: 2px;
+            border-radius: 3px;
+        }
+        .animation-container {
+            height: 400px;
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .memory {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background-color: #5a7;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        .memory-label {
+            position: absolute;
+            bottom: 15px;
+            left: 10px;
+            color: white;
+            font-weight: bold;
+            z-index: 10;
+        }
+        .memory-bar {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 50px;
+            background-color: #4CAF50;
+            transition: height 0.3s;
+        }
+        .timer {
+            width: 80px;
+            height: 80px;
+            background-color: #ff5252;
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+        .app-container {
+            width: 250px;
+            height: 150px;
+            background-color: #3498db;
+            position: absolute;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+        .cpu-usage {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .counter {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 8px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .button-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .explanation {
+            margin-top: 30px;
+            line-height: 1.6;
+            color: #333;
+        }
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #eee;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            background-color: #ddd;
+        }
+        .red-text {
+            color: #ff5252;
+        }
+        .green-text {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Memory Leak from Uncleaned Timers</h1>
+        
+        <div class="code-container">
+            <div class="code">let counter = 0;
+
+const timer = setInterval(() => {
+    console.log(counter++);
+    // Không gọi clearInterval khi không cần thiết
+}, 100);</div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('animation')">Animation</div>
+            <div class="tab" onclick="switchTab('explanation')">Explanation</div>
+        </div>
+        
+        <div id="animation-content">
+            <div class="animation-container" id="animation-scene">
+                <div class="counter" id="counter">Counter: 0</div>
+                <div class="cpu-usage" id="cpu-usage">CPU: 0%</div>
+                <div class="memory-label">Memory Usage</div>
+                <div class="memory-bar" id="memory-bar"></div>
+            </div>
+            
+            <div class="button-container">
+                <button onclick="startAnimation()">Start Animation</button>
+                <button onclick="toggleNavigate()">Navigate to New Page</button>
+                <button onclick="resetAnimation()">Reset</button>
+            </div>
+        </div>
+        
+        <div id="explanation-content" style="display: none;">
+            <div class="explanation">
+                <h2>The Problem with Uncleaned Timers</h2>
+                <p>In Single-Page Applications (SPAs), when you create a timer using <code>setInterval()</code> without properly cleaning it up with <code>clearInterval()</code>, it leads to memory leaks.</p>
+                
+                <h3>Why Is This a Problem?</h3>
+                <ul>
+                    <li><span class="red-text">Memory Leaks:</span> Timers keep references to their callback functions and any variables in their scope, preventing garbage collection.</li>
+                    <li><span class="red-text">Performance Degradation:</span> Each uncleaned timer continues to execute in the background, consuming CPU resources.</li>
+                    <li><span class="red-text">Unexpected Behavior:</span> When navigating between different views/components in an SPA, old timers continue to run, potentially causing unexpected state changes.</li>
+                </ul>
+                
+                <h3>The Proper Solution</h3>
+                <div class="code-container">
+                    <div class="code">let counter = 0;
+let timer;
+
+function startCounter() {
+    timer = setInterval(() => {
+        console.log(counter++);
+    }, 100);
+}
+
+function stopCounter() {
+    clearInterval(timer);
+    timer = null;
+}
+
+// When component unmounts or page changes
+stopCounter();</div>
+                </div>
+                
+                <h3>Best Practices</h3>
+                <ul>
+                    <li><span class="green-text">Always store timer IDs</span> in variables so you can reference them later.</li>
+                    <li><span class="green-text">Clean up timers</span> in component unmount methods (React), or when navigating away from pages.</li>
+                    <li><span class="green-text">Consider using</span> requestAnimationFrame for animations, which automatically pauses when the tab is inactive.</li>
+                    <li><span class="green-text">Use WeakMap or WeakSet</span> for complex timer management to allow garbage collection.</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let animationTimeline;
+        let counterValue = 0;
+        let cpuUsage = 0;
+        let memoryHeight = 50;
+        let timerInstances = [];
+        let isNavigated = false;
+        let pageActive = true;
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            if (tab === 'animation') {
+                document.getElementById('animation-content').style.display = 'block';
+                document.getElementById('explanation-content').style.display = 'none';
+            } else {
+                document.getElementById('animation-content').style.display = 'none';
+                document.getElementById('explanation-content').style.display = 'block';
+            }
+        }
+        
+        function createTimerInstance(index) {
+            const timer = document.createElement('div');
+            timer.className = 'timer';
+            timer.textContent = `Timer ${index}`;
+            timer.style.left = `${Math.random() * 70 + 15}%`;
+            timer.style.top = `${Math.random() * 50 + 25}%`;
+            timer.style.opacity = 0;
+            document.getElementById('animation-scene').appendChild(timer);
+            
+            return timer;
+        }
+        
+        function createPageInstance() {
+            const app = document.createElement('div');
+            app.className = 'app-container';
+            app.textContent = pageActive ? 'Current Page' : 'New Page';
+            app.style.left = '50%';
+            app.style.top = '25%';
+            app.style.transform = 'translate(-50%, -50%)';
+            app.style.opacity = 0;
+            document.getElementById('animation-scene').appendChild(app);
+            
+            return app;
+        }
+        
+        function startAnimation() {
+            resetAnimation();
+            
+            const memoryBar = document.getElementById('memory-bar');
+            const counterDisplay = document.getElementById('counter');
+            const cpuDisplay = document.getElementById('cpu-usage');
+            const page = createPageInstance();
+            
+            animationTimeline = gsap.timeline();
+            
+            // Show the current page
+            animationTimeline.to(page, {
+                opacity: 1,
+                duration: 0.5
+            });
+            
+            // Create first timer
+            const timer1 = createTimerInstance(1);
+            timerInstances.push(timer1);
+            
+            animationTimeline.to(timer1, {
+                opacity: 1,
+                scale: 1,
+                duration: 0.5
+            });
+            
+            // Start the counter and memory increase
+            animationTimeline.to({}, {
+                duration: 10,
+                onUpdate: function() {
+                    // Update counter every 0.3 seconds
+                    if (Math.floor(this.time() * 10 / 3) > counterValue) {
+                        counterValue++;
+                        counterDisplay.textContent = `Counter: ${counterValue}`;
+                        
+                        // Increase memory slightly with each count
+                        if (memoryHeight < 350) {
+                            memoryHeight += 3;
+                            memoryBar.style.height = `${memoryHeight}px`;
+                        }
+                        
+                        // Increase CPU usage slightly
+                        cpuUsage = Math.min(cpuUsage + 1, 30);
+                        cpuDisplay.textContent = `CPU: ${cpuUsage}%`;
+                    }
+                }
+            });
+            
+            const btnContainer = document.querySelector('.button-container');
+            btnContainer.querySelector('button:nth-child(1)').disabled = true;
+        }
+        
+        function toggleNavigate() {
+            if (!animationTimeline) return;
+            
+            isNavigated = !isNavigated;
+            const newPage = createPageInstance();
+            newPage.textContent = 'New Page';
+            
+            const animationScene = document.getElementById('animation-scene');
+            const oldPage = animationScene.querySelector('.app-container');
+            
+            gsap.to(oldPage, {
+                x: '-300px',
+                opacity: 0,
+                duration: 0.7
+            });
+            
+            gsap.fromTo(newPage, 
+                { x: '300px', opacity: 0 },
+                { x: '0', opacity: 1, duration: 0.7 }
+            );
+            
+            // Create more timer instances on navigation to simulate the problem
+            const timer2 = createTimerInstance(timerInstances.length + 1);
+            timerInstances.push(timer2);
+            
+            gsap.to(timer2, {
+                opacity: 1,
+                scale: 1,
+                duration: 0.5,
+                delay: 0.7
+            });
+            
+            // Accelerate memory and CPU increase after navigation
+            const counterDisplay = document.getElementById('counter');
+            const cpuDisplay = document.getElementById('cpu-usage');
+            const memoryBar = document.getElementById('memory-bar');
+            
+            gsap.to({}, {
+                duration: 7,
+                onUpdate: function() {
+                    // Update counter more frequently
+                    if (Math.floor(this.time() * 10 / 2) > 0 && this.time() % 0.2 < 0.1) {
+                        counterValue++;
+                        counterDisplay.textContent = `Counter: ${counterValue}`;
+                        
+                        // Increase memory more rapidly
+                        if (memoryHeight < 350) {
+                            memoryHeight += 5;
+                            memoryBar.style.height = `${memoryHeight}px`;
+                        }
+                        
+                        // Increase CPU usage more rapidly
+                        cpuUsage = Math.min(cpuUsage + 2, 75);
+                        cpuDisplay.textContent = `CPU: ${cpuUsage}%`;
+                    }
+                }
+            });
+            
+            // Create a third timer after some delay to show continued degradation
+            setTimeout(() => {
+                if (!animationTimeline) return;
+                
+                const timer3 = createTimerInstance(timerInstances.length + 1);
+                timerInstances.push(timer3);
+                
+                gsap.to(timer3, {
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.5
+                });
+                
+                // Pulse the timers to indicate they're still active
+                timerInstances.forEach(timer => {
+                    gsap.to(timer, {
+                        scale: 1.1,
+                        duration: 0.3,
+                        repeat: -1,
+                        yoyo: true
+                    });
+                });
+                
+                // Final CPU and memory increase
+                gsap.to({}, {
+                    duration: 5,
+                    onUpdate: function() {
+                        if (this.time() % 0.15 < 0.1) {
+                            counterValue++;
+                            counterDisplay.textContent = `Counter: ${counterValue}`;
+                            
+                            if (memoryHeight < 350) {
+                                memoryHeight += 7;
+                                memoryBar.style.height = `${memoryHeight}px`;
+                            }
+                            
+                            cpuUsage = Math.min(cpuUsage + 3, 95);
+                            cpuDisplay.textContent = `CPU: ${cpuUsage}%`;
+                        }
+                    }
+                });
+            }, 3000);
+        }
+        
+        function resetAnimation() {
+            if (animationTimeline) {
+                animationTimeline.kill();
+                animationTimeline = null;
+            }
+            
+            const animationScene = document.getElementById('animation-scene');
+            
+            // Remove all timers and pages
+            document.querySelectorAll('.timer, .app-container').forEach(el => el.remove());
+            
+            // Reset values
+            counterValue = 0;
+            cpuUsage = 0;
+            memoryHeight = 50;
+            timerInstances = [];
+            isNavigated = false;
+            
+            // Reset displays
+            document.getElementById('counter').textContent = 'Counter: 0';
+            document.getElementById('cpu-usage').textContent = 'CPU: 0%';
+            document.getElementById('memory-bar').style.height = '50px';
+            
+            const btnContainer = document.querySelector('.button-container');
+            btnContainer.querySelector('button:nth-child(1)').disabled = false;
+        }
+    </script>
+</body>
+</html>

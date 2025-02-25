@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Event Loop: Microtasks & Macrotasks</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            overflow-x: hidden;
+        }
+        .container {
+            max-width: 950px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .code-container {
+            background-color: #282c34;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            color: white;
+            font-family: monospace;
+            overflow-x: auto;
+        }
+        .code {
+            line-height: 1.5;
+            white-space: pre;
+            font-size: 14px;
+        }
+        .tab-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            background-color: #eee;
+            cursor: pointer;
+            border-radius: 5px 5px 0 0;
+            margin-right: 5px;
+        }
+        .tab.active {
+            background-color: #3498db;
+            color: white;
+        }
+        .tab:hover:not(.active) {
+            background-color: #ddd;
+        }
+        .content-section {
+            display: none;
+        }
+        .content-section.active {
+            display: block;
+        }
+        .animation-container {
+            height: 550px;
+            position: relative;
+            margin: 20px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            overflow: hidden;
+            background-color: #f9f9f9;
+            display: flex;
+        }
+        .event-loop-container {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ddd;
+            position: relative;
+        }
+        .call-stack-container {
+            height: 180px;
+            border-bottom: 1px solid #ddd;
+            padding: 10px;
+            position: relative;
+        }
+        .queue-container {
+            flex: 1;
+            display: flex;
+            border-bottom: 1px solid #ddd;
+        }
+        .microtask-queue {
+            flex: 1;
+            border-right: 1px solid #ddd;
+            padding: 10px;
+            position: relative;
+            background-color: #e8f4fc;
+        }
+        .macrotask-queue {
+            flex: 1;
+            padding: 10px;
+            position: relative;
+            background-color: #fcf3e8;
+        }
+        .output-container {
+            flex: 2;
+            border-left: 1px solid #ddd;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            background-color: #fafafa;
+        }
+        .queue-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .task {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        .microtask {
+            background-color: #81d4fa;
+            border-left: 4px solid #0288d1;
+        }
+        .macrotask {
+            background-color: #ffcc80;
+            border-left: 4px solid #ef6c00;
+        }
+        .stack-frame {
+            margin: 5px 0;
+            padding: 8px;
+            border-radius: 4px;
+            background-color: #e0e0e0;
+            border-left: 4px solid #757575;
+            font-family: monospace;
+            font-size: 13px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .output-line {
+            padding: 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .output-line:last-child {
+            border-bottom: none;
+        }
+        .output-text {
+            font-weight: bold;
+        }
+        .output-time {
+            color: #757575;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .legend-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .button {
+            padding: 10px 20px;
+            margin: 0 5px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        .button-primary {
+            background-color: #3498db;
+            color: white;
+        }
+        .button-primary:hover {
+            background-color: #2980b9;
+        }
+        .button-secondary {
+            background-color: #e74c3c;
+            color: white;
+        }
+        .button-secondary:hover {
+            background-color: #c0392b;
+        }
+        .explanation-content {
+            line-height: 1.6;
+        }
+        .highlight-yellow {
+            background-color: #fff59d;
+            padding: 2px;
+        }
+        .highlight-blue {
+            background-color: #bbdefb;
+            padding: 2px;
+        }
+        .highlight-orange {
+            background-color: #ffccbc;
+            padding: 2px;
+        }
+        .task-explanation {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .current-step {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            background-color: rgba(0,0,0,0.7);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .animated-arrow {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background-color: #4CAF50;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            z-index: 10;
+            opacity: 0;
+        }
+        .step-description {
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            font-size: 14px;
+            line-height: 1.5;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Event Loop: Microtasks & Macrotasks</h1>
+        
+        <div class="code-container">
+            <div class="code">console.log('A');
+
+setTimeout(() => {
+    console.log('B');
+    Promise.resolve().then(() => console.log('C'));
+}, 0);
+
+Promise.resolve().then(() => {
+    console.log('D');
+    setTimeout(() => console.log('E'), 0);
+});
+
+console.log('F');</div>
+        </div>
+        
+        <div class="tab-container">
+            <div class="tab active" onclick="switchTab('demo')">Visualization</div>
+            <div class="tab" onclick="switchTab('explanation')">Explanation</div>
+            <div class="tab" onclick="switchTab('details')">Event Loop Details</div>
+        </div>
+        
+        <div id="demo-section" class="content-section active">
+            <div class="step-description" id="step-description">
+                Click "Start Animation" to see how the event loop processes this code
+            </div>
+            
+            <div class="animation-container">
+                <div class="event-loop-container">
+                    <div class="current-step" id="current-step">Step: 0/0</div>
+                    <div class="animated-arrow" id="event-loop-arrow">→</div>
+                    
+                    <div class="call-stack-container">
+                        <div class="queue-title">Call Stack</div>
+                        <div id="call-stack"></div>
+                    </div>
+                    
+                    <div class="queue-container">
+                        <div class="microtask-queue">
+                            <div class="queue-title">Microtask Queue</div>
+                            <div id="microtask-queue"></div>
+                        </div>
+                        <div class="macrotask-queue">
+                            <div class="queue-title">Macrotask Queue</div>
+                            <div id="macrotask-queue"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="output-container" id="output-container">
+                    <div class="queue-title">Console Output</div>
+                    <!-- Output will be added here -->
+                </div>
+            </div>
+            
+            <div class="legend-container">
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #e0e0e0;"></div>
+                    <span>Call Stack</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #81d4fa;"></div>
+                    <span>Microtasks</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background-color: #ffcc80;"></div>
+                    <span>Macrotasks</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="button button-primary" onclick="startAnimation()">Start Animation</button>
+                <button class="button button-secondary" onclick="resetAnimation()">Reset</button>
+            </div>
+        </div>
+        
+        <div id="explanation-section" class="content-section">
+            <div class="explanation-content">
+                <h2>Execution Order Analysis</h2>
+                <p>The code will log: <strong>A, F, D, B, C, E</strong></p>
+                
+                <div class="task-explanation">
+                    <h3>Step-by-Step Execution:</h3>
+                    <ol>
+                        <li><strong>console.log('A')</strong> executes immediately (synchronous code).</li>
+                        <li><strong>setTimeout(() => { ... })</strong> is encountered and its callback is scheduled as a macrotask.</li>
+                        <li><strong>Promise.resolve().then(...)</strong> is encountered and its callback is scheduled as a microtask.</li>
+                        <li><strong>console.log('F')</strong> executes immediately (synchronous code).</li>
+                        <li>The call stack is now empty, so the event loop checks for microtasks and executes them all:</li>
+                        <li>The microtask <strong>console.log('D')</strong> executes and then <strong>setTimeout(() => console.log('E'), 0)</strong> schedules another macrotask.</li>
+                        <li>The event loop now processes the first macrotask in the queue:</li>
+                        <li><strong>console.log('B')</strong> executes and then <strong>Promise.resolve().then(...)</strong> schedules a new microtask.</li>
+                        <li>Before moving to the next macrotask, all microtasks must be processed, so <strong>console.log('C')</strong> executes.</li>
+                        <li>Finally, the event loop processes the next macrotask: <strong>console.log('E')</strong>.</li>
+                    </ol>
+                </div>
+                
+                <h3>Key Points to Remember:</h3>
+                <ul>
+                    <li>JavaScript execution is <span class="highlight-yellow">single-threaded and synchronous</span> - only one operation can be processed at any given time.</li>
+                    <li>The event loop follows a specific order:
+                        <ol>
+                            <li>Execute all synchronous code in the call stack</li>
+                            <li>Process all microtasks in the queue</li>
+                            <li>Process one macrotask from the queue</li>
+                            <li>Return to step 2 (check for microtasks again)</li>
+                        </ol>
+                    </li>
+                    <li><span class="highlight-blue">Microtasks</span> (Promise callbacks) have higher priority than <span class="highlight-orange">macrotasks</span> (setTimeout, setInterval).</li>
+                    <li>All microtasks are processed before the next macrotask begins.</li>
+                    <li>New microtasks added during execution are processed in the same cycle.</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div id="details-section" class="content-section">
+            <div class="explanation-content">
+                <h2>JavaScript Event Loop Deep Dive</h2>
+                
+                <h3>What is the Event Loop?</h3>
+                <p>The event loop is a fundamental concept in JavaScript that enables asynchronous programming. It continuously checks the call stack and task queues, determining what code should run next.</p>
+                
+                <h3>Key Components:</h3>
+                
+                <h4>1. Call Stack</h4>
+                <p>The call stack is where function calls are tracked. When a function is called, it's pushed onto the stack. When it returns, it's popped off. The call stack follows LIFO (Last In, First Out) order.</p>
+                
+                <h4>2. Microtask Queue</h4>
+                <p>Microtasks are small, high-priority tasks that execute after the current script but before rendering or processing the next macrotask.</p>
+                <p><strong>Examples include:</strong></p>
+                <ul>
+                    <li>Promise callbacks (.then(), .catch(), .finally())</li>
+                    <li>queueMicrotask() API</li>
+                    <li>MutationObserver callbacks</li>
+                    <li>Process.nextTick() (in Node.js)</li>
+                </ul>
+                
+                <h4>3. Macrotask Queue (Task Queue)</h4>
+                <p>Macrotasks are larger, lower-priority tasks that are processed one at a time, after all microtasks are completed.</p>
+                <p><strong>Examples include:</strong></p>
+                <ul>
+                    <li>setTimeout() and setInterval() callbacks</li>
+                    <li>UI events (click, scroll, etc.)</li>
+                    <li>I/O operations</li>
+                    <li>requestAnimationFrame()</li>
+                    <li>setImmediate() (in Node.js)</li>
+                </ul>
+                
+                <h3>Event Loop Algorithm:</h3>
+                <ol>
+                    <li>Execute the entire script (all synchronous code)</li>
+                    <li>While there are microtasks, dequeue and execute them</li>
+                    <li>Dequeue and execute the oldest macrotask</li>
+                    <li>Return to step 2</li>
+                </ol>
+                
+                <h3>Why This Matters:</h3>
+                <p>Understanding the event loop and task priorities is crucial for:</p>
+                <ul>
+                    <li><strong>Performance optimization:</strong> Knowing when code will execute allows you to optimize critical operations</li>
+                    <li><strong>Debugging async code:</strong> Understanding execution order helps identify and fix timing issues</li>
+                    <li><strong>Writing reliable UI updates:</strong> Microtasks run before browser rendering, which affects how and when UI changes appear</li>
+                    <li><strong>Preventing UI blocking:</strong> Long-running tasks can block the event loop and cause unresponsive UIs</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define animation steps
+        const animationSteps = [
+            {
+                description: "Initial script execution begins",
+                action: function() {
+                    addStackFrame("Global Execution Context");
+                }
+            },
+            {
+                description: "Execute console.log('A')",
+                action: function() {
+                    addStackFrame("console.log('A')");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addOutput("A");
+                    }, 500);
+                }
+            },
+            {
+                description: "Encounter setTimeout(), schedule macrotask",
+                action: function() {
+                    addStackFrame("setTimeout()");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addMacrotask("setTimeout callback: console.log('B') & Promise");
+                    }, 500);
+                }
+            },
+            {
+                description: "Encounter Promise.resolve().then(), schedule microtask",
+                action: function() {
+                    addStackFrame("Promise.resolve().then()");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addMicrotask("Promise callback: console.log('D') & setTimeout");
+                    }, 500);
+                }
+            },
+            {
+                description: "Execute console.log('F')",
+                action: function() {
+                    addStackFrame("console.log('F')");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addOutput("F");
+                    }, 500);
+                }
+            },
+            {
+                description: "Main script execution completed, call stack clears",
+                action: function() {
+                    setTimeout(() => {
+                        removeStackFrame(); // Remove global context
+                    }, 500);
+                }
+            },
+            {
+                description: "Event loop checks microtask queue, finds Promise callback",
+                action: function() {
+                    animateArrow("microtask-queue");
+                }
+            },
+            {
+                description: "Execute microtask: console.log('D')",
+                action: function() {
+                    addStackFrame("Promise callback");
+                    setTimeout(() => {
+                        addStackFrame("console.log('D')");
+                    }, 300);
+                    setTimeout(() => {
+                        removeStackFrame(); // Remove console.log
+                        addOutput("D");
+                    }, 800);
+                }
+            },
+            {
+                description: "Inside Promise callback: setTimeout schedules new macrotask",
+                action: function() {
+                    addStackFrame("setTimeout()");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addMacrotask("setTimeout callback: console.log('E')");
+                        setTimeout(() => {
+                            removeStackFrame(); // Remove Promise callback
+                        }, 300);
+                    }, 500);
+                }
+            },
+            {
+                description: "Microtask queue is empty, event loop checks macrotask queue",
+                action: function() {
+                    animateArrow("macrotask-queue");
+                }
+            },
+            {
+                description: "Execute first macrotask: console.log('B')",
+                action: function() {
+                    addStackFrame("setTimeout callback");
+                    setTimeout(() => {
+                        addStackFrame("console.log('B')");
+                    }, 300);
+                    setTimeout(() => {
+                        removeStackFrame(); // Remove console.log
+                        addOutput("B");
+                    }, 800);
+                }
+            },
+            {
+                description: "Inside setTimeout callback: Promise.then schedules new microtask",
+                action: function() {
+                    addStackFrame("Promise.resolve().then()");
+                    setTimeout(() => {
+                        removeStackFrame();
+                        addMicrotask("Promise callback: console.log('C')");
+                        setTimeout(() => {
+                            removeStackFrame(); // Remove setTimeout callback
+                        }, 300);
+                    }, 500);
+                }
+            },
+            {
+                description: "Before next macrotask, event loop must process microtask queue",
+                action: function() {
+                    animateArrow("microtask-queue");
+                }
+            },
+            {
+                description: "Execute microtask: console.log('C')",
+                action: function() {
+                    addStackFrame("Promise callback");
+                    setTimeout(() => {
+                        addStackFrame("console.log('C')");
+                    }, 300);
+                    setTimeout(() => {
+                        removeStackFrame(); // Remove console.log
+                        addOutput("C");
+                        setTimeout(() => {
+                            removeStackFrame(); // Remove Promise callback
+                        }, 300);
+                    }, 800);
+                }
+            },
+            {
+                description: "Microtask queue is empty, event loop checks macrotask queue",
+                action: function() {
+                    animateArrow("macrotask-queue");
+                }
+            },
+            {
+                description: "Execute second macrotask: console.log('E')",
+                action: function() {
+                    addStackFrame("setTimeout callback");
+                    setTimeout(() => {
+                        addStackFrame("console.log('E')");
+                    }, 300);
+                    setTimeout(() => {
+                        removeStackFrame(); // Remove console.log
+                        addOutput("E");
+                        setTimeout(() => {
+                            removeStackFrame(); // Remove setTimeout callback
+                        }, 300);
+                    }, 800);
+                }
+            },
+            {
+                description: "All tasks processed, final output: A, F, D, B, C, E",
+                action: function() {
+                    // No action needed, just description
+                }
+            }
+        ];
+        
+        let currentStep = 0;
+        let animationRunning = false;
+        
+        function switchTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`.tab[onclick="switchTab('${tab}')"]`).classList.add('active');
+            
+            document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`${tab}-section`).classList.add('active');
+        }
+        
+        function addStackFrame(text) {
+            const stackFrame = document.createElement('div');
+            stackFrame.className = 'stack-frame';
+            stackFrame.textContent = text;
+            stackFrame.style.opacity = 0;
+            
+            const callStack = document.getElementById('call-stack');
+            callStack.insertBefore(stackFrame, callStack.firstChild);
+            
+            gsap.to(stackFrame, {
+                opacity: 1,
+                y: 0,
+                duration: 0.3,
+                ease: "power2.out"
+            });
+        }
+        
+        function removeStackFrame() {
+            const callStack = document.getElementById('call-stack');
+            if (callStack.children.length > 0) {
+                const frame = callStack.children[0];
+                
+                gsap.to(frame, {
+                    opacity: 0,
+                    x: -50,
+                    duration: 0.3,
+                    ease: "power2.in",
+                    onComplete: () => {
+                        frame.remove();
+                    }
+                });
+            }
+        }
+        
+        function addMicrotask(text) {
+            const task = document.createElement('div');
+            task.className = 'task microtask';
+            task.textContent = text;
+            task.style.opacity = 0;
+            
+            document.getElementById('microtask-queue').appendChild(task);
+            
+            gsap.to(task, {
+                opacity: 1,
+                x: 0,
+                duration: 0.3,
+                ease: "power2.out"
+            });
+            
+            task.dataset.text = text;
+            return task;
+        }
+        
+        function addMacrotask(text) {
+            const task = document.createElement('div');
+            task.className = 'task macrotask';
+            task.textContent = text;
+            task.style.opacity = 0;
+            
+            document.getElementById('macrotask-queue').appendChild(task);
+            
+            gsap.to(task, {
+                opacity: 1,
+                x: 0,
+                duration: 0.3,
+                ease: "power2.out"
+            });
+            
+            task.dataset.text = text;
+            return task;
+        }
+        
+        function removeMicrotask() {
+            const microtaskQueue = document.getElementById('microtask-queue');
+            if (microtaskQueue.children.length > 0) {
+                const task = microtaskQueue.children[0];
+                
+                gsap.to(task, {
+                    opacity: 0,
+                    x: -50,
+                    duration: 0.3,
+                    ease: "power2.in",
+                    onComplete: () => {
+                        task.remove();
+                    }
+                });
+            }
+        }
+        
+        function removeMacrotask() {
+            const macrotaskQueue = document.getElementById('macrotask-queue');
+            if (macrotaskQueue.children.length > 0) {
+                const task = macrotaskQueue.children[0];
+                
+                gsap.to(task, {
+                    opacity: 0,
+                    x: -50,
+                    duration: 0.3,
+                    ease: "power2.in",
+                    onComplete: () => {
+                        task.remove();
+                    }
+                });
+            }
+        }
+        
+        function addOutput(text) {
+            const outputLine = document.createElement('div');
+            outputLine.className = 'output-line';
+            
+            const outputText = document.createElement('span');
+            outputText.className = 'output-text';
+            outputText.textContent = text;
+            
+            const outputTime = document.createElement('span');
+            outputTime.className = 'output-time';
+            outputTime.textContent = `(Step ${currentStep})`;
+            
+            outputLine.appendChild(outputText);
+            outputLine.appendChild(outputTime);
+            
+            document.getElementById('output-container').appendChild(outputLine);
+            
+            // Scroll to bottom of output
+            const outputContainer = document.getElementById('output-container');
+            outputContainer.scrollTop = outputContainer.scrollHeight;
+        }
+        
+        function animateArrow(targetId) {
+            const arrow = document.getElementById('event-loop-arrow');
+            const target = document.getElementById(targetId);
+            
+            if (!target) return;
+            
+            // Position the arrow
+            const targetRect = target.getBoundingClientRect();
+            const containerRect = document.querySelector('.event-loop-container').getBoundingClientRect();
+            
+            const arrowLeft = targetRect.left - containerRect.left + 5;
+            const arrowTop = targetRect.top - containerRect.top - 30;
+            
+            arrow.style.left = `${arrowLeft}px`;
+            arrow.style.top = `${arrowTop}px`;
+            
+            // Show and animate the arrow
+            gsap.to(arrow, {
+                opacity: 1,
+                y: 20,
+                duration: 0.5,
+                repeat: 1,
+                yoyo: true,
+                onComplete: () => {
+                    arrow.style.opacity = 0;
+                    
+                    // If targeting a queue, remove the first item
+                    if (targetId === 'microtask-queue') {
+                        removeMicrotask();
+                    } else if (targetId === 'macrotask-queue') {
+                        removeMacrotask();
+                    }
+                }
+            });
+        }
+        
+        function updateStepDescription() {
+            document.getElementById('step-description').textContent = 
+                animationSteps[currentStep].description;
+            
+            document.getElementById('current-step').textContent = 
+                `Step: ${currentStep + 1}/${animationSteps.length}`;
+        }
+        
+        function startAnimation() {
+            if (animationRunning) return;
+            animationRunning = true;
+            
+            document.querySelector('.button-primary').disabled = true;
+            
+            function runStep() {
+                if (currentStep >= animationSteps.length) {
+                    animationRunning = false;
+                    document.querySelector('.button-primary').disabled = false;
+                    return;
+                }
+                
+                updateStepDescription();
+                
+                // Run the current step's action
+                animationSteps[currentStep].action();
+                
+                // Wait for animation to complete before moving to next step
+                setTimeout(() => {
+                    currentStep++;
+                    if (currentStep < animationSteps.length) {
+                        runStep();
+                    } else {
+                        // Animation complete
+                        animationRunning = false;
+                        document.querySelector('.button-primary').disabled = false;
+                    }
+                }, 1500); // Time between steps
+            }
+            
+            runStep();
+        }
+        
+        function resetAnimation() {
+            if (animationRunning) return;
+            
+            // Clear all elements
+            document.getElementById('call-stack').innerHTML = '';
+            document.getElementById('microtask-queue').innerHTML = '';
+            document.getElementById('macrotask-queue').innerHTML = '';
+            document.getElementById('output-container').innerHTML = '<div class="queue-title">Console Output</div>';
+            
+            // Reset arrow
+            const arrow = document.getElementById('event-loop-arrow');
+            arrow.style.opacity = 0;
+            
+            // Reset step counter
+            currentStep = 0;
+            updateStepDescription();
+            
+            // Enable start button
+            document.querySelector('.button-primary').disabled = false;
+        }
+        
+        // Initialize
+        updateStepDescription();
+    </script>
+</body>
+</html>

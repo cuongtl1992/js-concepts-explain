@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memory Leak via Closure Visualization</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.5/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 90%;
+            max-width: 800px;
+            background-color: white;
+            border-radius: a8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-size: 14px;
+        }
+        .memory-diagram {
+            position: relative;
+            width: 100%;
+            height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin: 20px 0;
+            background-color: #f9f9f9;
+            overflow: hidden;
+        }
+        .memory-object {
+            position: absolute;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            font-size: 14px;
+        }
+        .function {
+            background-color: #ffe0b2;
+            border: 1px solid #ffb74d;
+        }
+        .data {
+            background-color: #c8e6c9;
+            border: 1px solid #81c784;
+        }
+        .event-listener {
+            background-color: #bbdefb;
+            border: 1px solid #64b5f6;
+        }
+        .button {
+            background-color: #e0e0e0;
+            border: 1px solid #9e9e9e;
+        }
+        .connection {
+            position: absolute;
+            height: 2px;
+            background-color: #9e9e9e;
+            transform-origin: left center;
+        }
+        .garbage-collector {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-color: #ef5350;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 10;
+        }
+        .garbage {
+            position: absolute;
+            right: 10px;
+            bottom: 10px;
+            width: 80px;
+            height: 100px;
+            background-color: #795548;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            border-radius: 0 0 10px 10px;
+        }
+        .memory-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #2196f3;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #1976d2;
+        }
+        button:disabled {
+            background-color: #b0bec5;
+            cursor: not-allowed;
+        }
+        .solution {
+            margin-top: 30px;
+        }
+        .tab-container {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 15px;
+        }
+        .tab {
+            padding: 10px 15px;
+            cursor: pointer;
+            background-color: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        .tab.active {
+            background-color: white;
+            border-bottom: 1px solid white;
+            margin-bottom: -1px;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .memory-leak-indicator {
+            position: absolute;
+            font-weight: bold;
+            font-size: 18px;
+            color: #d32f2f;
+            padding: 5px 10px;
+            border-radius: 5px;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Memory Leak via JavaScript Closures</h1>
+        <p>This visualization demonstrates how a memory leak can occur when a closure holds a reference to a large data structure.</p>
+        
+        <h2>Problematic Code:</h2>
+        <pre><code>function addHeavyHandler() {
+  const hugeData = new Array(1e6).fill('x');
+  document.getElementById('btn').addEventListener('click', function() {
+    console.log(hugeData[0]);
+  });
+}
+addHeavyHandler();</code></pre>
+        
+        <div class="memory-diagram" id="memoryDiagram">
+            <div class="memory-counter">Memory: 0 MB</div>
+            <div class="memory-leak-indicator">MEMORY LEAK!</div>
+            <div class="garbage">Garbage</div>
+        </div>
+        
+        <div class="controls">
+            <button id="startBtn">Start Animation</button>
+            <button id="resetBtn">Reset</button>
+            <button id="clickBtn">Click Button</button>
+            <button id="gcBtn">Run Garbage Collection</button>
+        </div>
+    </div>
+    
+    <div class="container solution">
+        <div class="tab-container">
+            <div class="tab active" data-tab="problem">The Problem</div>
+            <div class="tab" data-tab="solution1">Solution 1: Remove Listener</div>
+            <div class="tab" data-tab="solution2">Solution 2: Restructure</div>
+        </div>
+        
+        <div class="tab-content active" data-tab="problem">
+            <h2>The Problem Explained</h2>
+            <p>In the animation above:</p>
+            <ol>
+                <li>The <code>addHeavyHandler</code> function creates a huge array (<code>hugeData</code>) with 1 million elements.</li>
+                <li>It then attaches an event listener to a button that references this huge array.</li>
+                <li>Even after the function has finished executing, the event listener keeps a reference to <code>hugeData</code> through a closure.</li>
+                <li>The garbage collector cannot free the memory used by <code>hugeData</code> because the event listener still holds a reference to it.</li>
+                <li>This creates a memory leak - memory that cannot be reclaimed until the event listener is removed.</li>
+            </ol>
+        </div>
+        
+        <div class="tab-content" data-tab="solution1">
+            <h2>Solution 1: Properly Remove the Event Listener</h2>
+            <pre><code>function addHeavyHandler() {
+  const hugeData = new Array(1e6).fill('x');
+  const handleClick = function() {
+    console.log(hugeData[0]);
+  };
+  
+  const btn = document.getElementById('btn');
+  btn.addEventListener('click', handleClick);
+  
+  // Store a function to remove the listener
+  return function cleanUp() {
+    btn.removeEventListener('click', handleClick);
+    // Now hugeData can be garbage collected
+  };
+}
+
+const cleanUp = addHeavyHandler();
+
+// Later, when no longer needed:
+cleanUp();</code></pre>
+            <p>This solution stores the handler function in a variable so it can be referenced when removing the event listener. The cleanup function allows external code to remove the listener when it's no longer needed.</p>
+        </div>
+        
+        <div class="tab-content" data-tab="solution2">
+            <h2>Solution 2: Restructure the Code</h2>
+            <pre><code>function handleClick() {
+  // Only reference the specific data needed
+  console.log('x');
+}
+
+function addLightHandler() {
+  // Process huge data but don't reference it in the closure
+  const hugeData = new Array(1e6).fill('x');
+  
+  // Do something with hugeData here if needed
+  const firstElement = hugeData[0]; // Extract only what's needed
+  
+  document.getElementById('btn').addEventListener('click', function() {
+    // Use only the small piece of data we need
+    console.log(firstElement);
+  });
+  
+  // hugeData can be garbage collected after this function ends
+}
+
+addLightHandler();</code></pre>
+            <p>This solution restructures the code to avoid keeping a reference to the entire large data structure. Instead, it extracts only the needed information, allowing the large data structure to be garbage collected.</p>
+        </div>
+    </div>
+    
+    <script>
+        let timeline;
+        let memoryUsage = 0;
+        const MB = 1;
+        
+        // DOM elements
+        const memoryDiagram = document.getElementById('memoryDiagram');
+        const startBtn = document.getElementById('startBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const clickBtn = document.getElementById('clickBtn');
+        const gcBtn = document.getElementById('gcBtn');
+        const memoryCounter = document.querySelector('.memory-counter');
+        const memoryLeakIndicator = document.querySelector('.memory-leak-indicator');
+        
+        // Disable buttons initially
+        clickBtn.disabled = true;
+        gcBtn.disabled = true;
+        
+        // Animation functions
+        function createObject(id, type, text, x, y, width, height) {
+            const element = document.createElement('div');
+            element.id = id;
+            element.className = `memory-object ${type}`;
+            element.textContent = text;
+            element.style.left = `${x}px`;
+            element.style.top = `${y}px`;
+            element.style.width = `${width}px`;
+            element.style.height = `${height}px`;
+            memoryDiagram.appendChild(element);
+            return element;
+        }
+        
+        function createConnection(id, fromElement, toElement) {
+            const connection = document.createElement('div');
+            connection.id = id;
+            connection.className = 'connection';
+            
+            // Calculate positions
+            const fromRect = fromElement.getBoundingClientRect();
+            const toRect = toElement.getBoundingClientRect();
+            const diagramRect = memoryDiagram.getBoundingClientRect();
+            
+            const fromX = fromElement.offsetLeft + fromElement.offsetWidth / 2;
+            const fromY = fromElement.offsetTop + fromElement.offsetHeight / 2;
+            const toX = toElement.offsetLeft + toElement.offsetWidth / 2;
+            const toY = toElement.offsetTop + toElement.offsetHeight / 2;
+            
+            // Calculate length and angle
+            const length = Math.sqrt(Math.pow(toX - fromX, 2) + Math.pow(toY - fromY, 2));
+            const angle = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+            
+            // Set position and dimensions
+            connection.style.left = `${fromX}px`;
+            connection.style.top = `${fromY}px`;
+            connection.style.width = `${length}px`;
+            connection.style.transform = `rotate(${angle}deg)`;
+            
+            memoryDiagram.appendChild(connection);
+            return connection;
+        }
+        
+        function updateMemoryCounter(amount) {
+            memoryUsage += amount;
+            memoryCounter.textContent = `Memory: ${memoryUsage.toFixed(1)} MB`;
+            if (memoryUsage > 8) {
+                memoryCounter.style.backgroundColor = '#d32f2f';
+            } else {
+                memoryCounter.style.backgroundColor = '#f44336';
+            }
+        }
+        
+        function createGarbageCollector() {
+            const gc = document.createElement('div');
+            gc.className = 'garbage-collector';
+            gc.textContent = 'GC';
+            gc.style.left = '20px';
+            gc.style.top = '20px';
+            memoryDiagram.appendChild(gc);
+            return gc;
+        }
+        
+        function startAnimation() {
+            if (timeline) {
+                timeline.kill();
+            }
+            
+            // Clear the diagram
+            while (memoryDiagram.children.length > 3) {
+                memoryDiagram.removeChild(memoryDiagram.children[0]);
+            }
+            
+            memoryUsage = 0;
+            updateMemoryCounter(0);
+            
+            // Enable/disable buttons
+            startBtn.disabled = true;
+            resetBtn.disabled = false;
+            clickBtn.disabled = true;
+            gcBtn.disabled = true;
+            
+            // Create animation timeline
+            timeline = gsap.timeline({
+                onComplete: function() {
+                    clickBtn.disabled = false;
+                    gcBtn.disabled = false;
+                }
+            });
+            
+            // Add objects to the diagram
+            const globalScope = createObject('globalScope', 'function', 'Global Scope', 50, 50, 120, 40);
+            
+            // Step 1: Call addHeavyHandler
+            timeline.add(() => {
+                const addHeavyHandler = createObject('addHeavyHandler', 'function', 'addHeavyHandler()', 50, 120, 180, 40);
+                const connection1 = createConnection('conn1', globalScope, addHeavyHandler);
+                
+                updateMemoryCounter(0.1); // Function definition takes a little memory
+            });
+            
+            // Step 2: Create hugeData inside the function
+            timeline.add(() => {
+                const hugeData = createObject('hugeData', 'data', 'hugeData[1e6]', 300, 120, 180, 80);
+                const connection2 = createConnection('conn2', document.getElementById('addHeavyHandler'), hugeData);
+                
+                updateMemoryCounter(8); // Large array takes significant memory
+            }, "+=0.5");
+            
+            // Step 3: Create event listener
+            timeline.add(() => {
+                const button = createObject('buttonElement', 'button', 'button#btn', 200, 220, 100, 40);
+                const listener = createObject('eventListener', 'event-listener', 'click listener', 350, 220, 150, 40);
+                
+                const connection3 = createConnection('conn3', button, listener);
+                const connection4 = createConnection('conn4', listener, document.getElementById('hugeData'));
+                
+                updateMemoryCounter(0.1); // Event listener takes a little memory
+            }, "+=0.5");
+            
+            // Step 4: Function execution completes, but closure keeps hugeData alive
+            timeline.add(() => {
+                gsap.to('#addHeavyHandler', {
+                    opacity: 0.3,
+                    duration: 0.5,
+                    onComplete: function() {
+                        const deadFn = document.getElementById('addHeavyHandler');
+                        deadFn.textContent += ' (done)';
+                        gsap.to(deadFn, { opacity: 0.5, duration: 0.5 });
+                    }
+                });
+                
+                // Show the memory leak warning
+                gsap.to(memoryLeakIndicator, {
+                    opacity: 1, 
+                    top: '50px',
+                    left: '300px',
+                    duration: 0.5,
+                    ease: "elastic.out(1, 0.5)"
+                });
+            }, "+=1");
+            
+            timeline.play();
+        }
+        
+        // Button click simulation
+        function simulateButtonClick() {
+            const button = document.getElementById('buttonElement');
+            const timeline = gsap.timeline();
+            
+            timeline.to(button, {
+                scale: 0.9,
+                backgroundColor: '#9e9e9e',
+                duration: 0.1
+            });
+            
+            timeline.to(button, {
+                scale: 1,
+                backgroundColor: '#e0e0e0',
+                duration: 0.1
+            });
+            
+            // Highlight the connection to hugeData
+            const listener = document.getElementById('eventListener');
+            const hugeData = document.getElementById('hugeData');
+            
+            timeline.to(listener, { backgroundColor: '#64b5f6', duration: 0.2 });
+            timeline.to(hugeData, { backgroundColor: '#81c784', duration: 0.2 });
+            
+            timeline.to(listener, { backgroundColor: '#bbdefb', duration: 0.2 });
+            timeline.to(hugeData, { backgroundColor: '#c8e6c9', duration: 0.2 });
+        }
+        
+        // Garbage collection simulation
+        function simulateGarbageCollection() {
+            const gc = createGarbageCollector();
+            const timeline = gsap.timeline();
+            
+            // Move GC around
+            timeline.to(gc, {
+                left: '300px', 
+                top: '50px',
+                duration: 1,
+                ease: "power1.inOut"
+            });
+            
+            // Try to collect hugeData but can't because of the event listener
+            timeline.to(gc, {
+                left: '400px', 
+                top: '150px',
+                duration: 1,
+                ease: "power1.inOut"
+            });
+            
+            // Show that GC can't collect it
+            timeline.to('#hugeData', {
+                borderColor: '#f44336',
+                borderWidth: '2px',
+                duration: 0.3,
+                repeat: 3,
+                yoyo: true
+            }, "-=0.5");
+            
+            // Move GC away
+            timeline.to(gc, {
+                left: '20px', 
+                top: '350px',
+                duration: 1,
+                ease: "power1.inOut",
+                onComplete: function() {
+                    memoryDiagram.removeChild(gc);
+                }
+            });
+        }
+        
+        // Reset animation
+        function resetAnimation() {
+            if (timeline) {
+                timeline.kill();
+            }
+            
+            // Clear the diagram
+            while (memoryDiagram.children.length > 3) {
+                memoryDiagram.removeChild(memoryDiagram.children[0]);
+            }
+            
+            memoryUsage = 0;
+            updateMemoryCounter(0);
+            
+            // Reset memory leak indicator
+            gsap.to(memoryLeakIndicator, {
+                opacity: 0,
+                duration: 0.3
+            });
+            
+            // Enable/disable buttons
+            startBtn.disabled = false;
+            resetBtn.disabled = true;
+            clickBtn.disabled = true;
+            gcBtn.disabled = true;
+        }
+        
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs and tab contents
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                this.classList.add('active');
+                const tabId = this.getAttribute('data-tab');
+                document.querySelector(`.tab-content[data-tab="${tabId}"]`).classList.add('active');
+            });
+        });
+        
+        // Event listeners
+        startBtn.addEventListener('click', startAnimation);
+        resetBtn.addEventListener('click', resetAnimation);
+        clickBtn.addEventListener('click', simulateButtonClick);
+        gcBtn.addEventListener('click', simulateGarbageCollection);
+        
+        // Initial state
+        resetBtn.disabled = true;
+        clickBtn.disabled = true;
+        gcBtn.disabled = true;
+    </script>
+</body>
+</html>

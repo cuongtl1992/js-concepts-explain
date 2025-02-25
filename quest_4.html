@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fetch Error Handling Animation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow: hidden;
+        }
+        
+        h1, h2, h3 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        
+        .animation-stage {
+            height: 480px;
+            position: relative;
+            margin: 30px 0;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+            overflow: hidden;
+        }
+        
+        .code-container {
+            background-color: #2d2d2d;
+            color: #f8f8f2;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            line-height: 1.5;
+            font-size: 16px;
+            overflow-x: auto;
+        }
+        
+        .code-highlight {
+            background-color: rgba(255, 235, 59, 0.2);
+            border-radius: 3px;
+            padding: 2px;
+        }
+        
+        .code-problem {
+            background-color: rgba(255, 87, 34, 0.2);
+            text-decoration: wavy underline rgba(255, 87, 34, 0.7);
+        }
+        
+        .code-solution {
+            background-color: rgba(76, 175, 80, 0.2);
+            font-weight: bold;
+        }
+        
+        .client-box {
+            position: absolute;
+            width: 180px;
+            height: 140px;
+            background-color: #3498db;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            left: 50px;
+            top: 80px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .server-box {
+            position: absolute;
+            width: 180px;
+            height: 140px;
+            background-color: #2ecc71;
+            border-radius: 8px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            right: 50px;
+            top: 80px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .request-packet {
+            position: absolute;
+            width: 40px;
+            height: 24px;
+            background-color: #f39c12;
+            border-radius: 4px;
+            left: 230px;
+            top: 138px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .response-packet {
+            position: absolute;
+            width: 40px;
+            height: 24px;
+            background-color: #9b59b6;
+            border-radius: 4px;
+            right: 230px;
+            top: 138px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .error-packet {
+            position: absolute;
+            width: 40px;
+            height: 24px;
+            background-color: #e74c3c;
+            border-radius: 4px;
+            right: 230px;
+            top: 138px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .network-line {
+            position: absolute;
+            height: 2px;
+            background-color: #bdc3c7;
+            top: 150px;
+            left: 230px;
+            right: 230px;
+        }
+        
+        .console-box {
+            position: absolute;
+            width: 80%;
+            height: 120px;
+            background-color: #2d2d2d;
+            border-radius: 8px;
+            color: #f8f8f2;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px;
+            font-family: monospace;
+            overflow: hidden;
+        }
+        
+        .console-title {
+            font-size: 14px;
+            color: #e0e0e0;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+            margin-bottom: 8px;
+        }
+        
+        .console-content {
+            height: calc(100% - 30px);
+            overflow-y: auto;
+        }
+        
+        .console-line {
+            margin: 5px 0;
+            line-height: 1.4;
+        }
+        
+        .console-error {
+            color: #e74c3c;
+        }
+        
+        .console-success {
+            color: #2ecc71;
+        }
+        
+        .status-indicator {
+            position: absolute;
+            width: 150px;
+            height: 30px;
+            border-radius: 15px;
+            top: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background-color: #2c3e50;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            max-width: 250px;
+            z-index: 10;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+        }
+        
+        .tooltip-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-bottom: 8px solid #2c3e50;
+            top: -8px;
+            left: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .success-btn {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .success-btn:hover {
+            background-color: #27ae60;
+        }
+        
+        .network-error-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+        
+        .network-error-btn:hover {
+            background-color: #c0392b;
+        }
+        
+        .server-error-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+        
+        .server-error-btn:hover {
+            background-color: #d35400;
+        }
+        
+        .proper-handling-btn {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .proper-handling-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .reset-btn {
+            background-color: #95a5a6;
+            color: white;
+        }
+        
+        .reset-btn:hover {
+            background-color: #7f8c8d;
+        }
+        
+        .explanation-section {
+            margin: 30px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-left: 4px solid #3498db;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .answer-section {
+            margin: 30px 0;
+            padding: 15px;
+            background-color: #e7f4e4;
+            border-left: 4px solid #2ecc71;
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .answer-title {
+            color: #27ae60;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .step-indicator {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #3498db;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .icon {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            margin-right: 10px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            vertical-align: middle;
+        }
+        
+        .server-icon {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M20,13H4A2,2 0 0,1 2,11V4A2,2 0 0,1 4,2H20A2,2 0 0,1 22,4V11A2,2 0 0,1 20,13M4,4V11H20V4H4M20,17H4A2,2 0 0,1 2,15V14H22V15A2,2 0 0,1 20,17M4,18H20A2,2 0 0,1 22,20V21H2V20A2,2 0 0,1 4,18Z"/></svg>');
+        }
+        
+        .browser-icon {
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M12,4C7.58,4 4,7.58 4,12C4,16.42 7.58,20 12,20C16.42,20 20,16.42 20,12C20,7.58 16.42,4 12,4M12,2C17.5,2 22,6.5 22,12C22,17.5 17.5,22 12,22C6.5,22 2,17.5 2,12C2,6.5 6.5,2 12,2M12,11C11.45,11 11,11.45 11,12C11,12.55 11.45,13 12,13C12.55,13 13,12.55 13,12C13,11.45 12.55,11 12,11M9,11C8.45,11 8,11.45 8,12C8,12.55 8.45,13 9,13C9.55,13 10,12.55 10,12C10,11.45 9.55,11 9,11M15,11C14.45,11 14,11.45 14,12C14,12.55 14.45,13 15,13C15.55,13 16,12.55 16,12C16,11.45 15.55,11 15,11Z"/></svg>');
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Fetch API Error Handling</h1>
+        
+        <div class="code-container">
+fetch('https://api.example.com/data')
+  .then(response => response.json())
+  .then(data => console.log(data));</div>
+        
+        <div class="step-indicator" id="step-indicator">Ready to simulate fetch requests</div>
+        
+        <div class="animation-stage" id="animation-stage">
+            <div class="network-line"></div>
+            
+            <div class="client-box">
+                <span class="icon browser-icon"></span>
+                Client (Browser)
+                <div style="font-size: 14px; margin-top: 10px;">
+                    fetch API
+                </div>
+            </div>
+            
+            <div class="server-box">
+                <span class="icon server-icon"></span>
+                Server
+                <div style="font-size: 14px; margin-top: 10px;">
+                    api.example.com
+                </div>
+            </div>
+            
+            <div class="console-box">
+                <div class="console-title">Console</div>
+                <div class="console-content" id="console-content">
+                    <div class="console-line">> Running fetch request...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="success-btn" id="success-btn">Success Case</button>
+            <button class="network-error-btn" id="network-error-btn">Network Error</button>
+            <button class="server-error-btn" id="server-error-btn">Server Error (404)</button>
+            <button class="proper-handling-btn" id="proper-handling-btn">Show Proper Handling</button>
+            <button class="reset-btn" id="reset-btn">Reset</button>
+        </div>
+        
+        <div class="code-container" id="solution-code" style="display: none;">
+fetch('https://api.example.com/data')
+  .then(response => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! Status: ${response.status}`);
+    }
+    return response.json();
+  })
+  .then(data => console.log(data))
+  .catch(error => {
+    console.error('Fetch error:', error);
+    // Handle error appropriately
+  });</div>
+        
+        <div class="explanation-section">
+            <h3>Problem with this Code</h3>
+            <p>The fetch API code shown above has two major issues with error handling:</p>
+            <ol>
+                <li><strong>Network errors:</strong> The fetch promise only rejects for network errors (like when the server is unreachable), but there's no <code>.catch()</code> to handle these rejections.</li>
+                <li><strong>HTTP error responses:</strong> When the server returns an error status (like 404 or 500), the fetch promise still resolves successfully! The <code>response.ok</code> property is not checked, so these errors go undetected.</li>
+            </ol>
+            <p>This can lead to unexpected behavior and unhandled errors in your application.</p>
+        </div>
+        
+        <div class="answer-section">
+            <div class="answer-title">Correct Answer: a) Không kiểm tra response.ok và không xử lý lỗi mạng; nên thêm .catch() và kiểm tra điều kiện response.ok</div>
+            <p>The correct solution needs to:</p>
+            <ol>
+                <li>Add a <code>.catch()</code> handler to deal with network errors.</li>
+                <li>Check the <code>response.ok</code> property to detect HTTP error status codes.</li>
+                <li>Throw an error when <code>response.ok</code> is false so it can be caught by the same error handler.</li>
+            </ol>
+            <p>This comprehensive approach ensures both network errors and HTTP error responses are properly handled, making your code more robust and reliable.</p>
+        </div>
+    </div>
+
+    <script>
+        const animationStage = document.getElementById('animation-stage');
+        const consoleContent = document.getElementById('console-content');
+        const stepIndicator = document.getElementById('step-indicator');
+        const solutionCode = document.getElementById('solution-code');
+        
+        const successBtn = document.getElementById('success-btn');
+        const networkErrorBtn = document.getElementById('network-error-btn');
+        const serverErrorBtn = document.getElementById('server-error-btn');
+        const properHandlingBtn = document.getElementById('proper-handling-btn');
+        const resetBtn = document.getElementById('reset-btn');
+        
+        let currentAnimation = null;
+        
+        function clearAnimation() {
+            if (currentAnimation) {
+                currentAnimation.kill();
+            }
+            
+            // Remove any dynamic elements
+            document.querySelectorAll('.request-packet, .response-packet, .error-packet, .status-indicator, .tooltip').forEach(el => {
+                el.remove();
+            });
+            
+            solutionCode.style.display = 'none';
+        }
+        
+        function resetConsole() {
+            consoleContent.innerHTML = '<div class="console-line">> Running fetch request...</div>';
+        }
+        
+        function addConsoleMessage(message, className = '') {
+            const line = document.createElement('div');
+            line.className = `console-line ${className}`;
+            line.textContent = message;
+            consoleContent.appendChild(line);
+            consoleContent.scrollTop = consoleContent.scrollHeight;
+        }
+        
+        function createStatusIndicator(text, bgColor) {
+            const indicator = document.createElement('div');
+            indicator.className = 'status-indicator';
+            indicator.textContent = text;
+            indicator.style.backgroundColor = bgColor;
+            indicator.style.opacity = 0;
+            animationStage.appendChild(indicator);
+            return indicator;
+        }
+        
+        function createTooltip(text, top, left) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'tooltip';
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+            
+            const arrow = document.createElement('div');
+            arrow.className = 'tooltip-arrow';
+            
+            tooltip.appendChild(arrow);
+            tooltip.innerHTML += text;
+            
+            animationStage.appendChild(tooltip);
+            return tooltip;
+        }
+        
+        function simulateSuccessCase() {
+            clearAnimation();
+            resetConsole();
+            stepIndicator.textContent = 'Simulating successful fetch request';
+            
+            const timeline = gsap.timeline();
+            currentAnimation = timeline;
+            
+            // Create request packet
+            const request = document.createElement('div');
+            request.className = 'request-packet';
+            request.textContent = 'GET';
+            request.style.opacity = 0;
+            animationStage.appendChild(request);
+            
+            // Create status indicator
+            const statusIndicator = createStatusIndicator('Request in progress', '#3498db');
+            
+            // Simulate request
+            timeline.to(statusIndicator, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { 
+                left: '670px', 
+                duration: 1.5, 
+                ease: 'power1.inOut',
+                onStart: () => {
+                    addConsoleMessage('> fetch("https://api.example.com/data")');
+                }
+            });
+            
+            // Create response packet
+            const response = document.createElement('div');
+            response.className = 'response-packet';
+            response.textContent = '200';
+            response.style.opacity = 0;
+            animationStage.appendChild(response);
+            
+            // Server processes and sends response
+            timeline.to(statusIndicator, { 
+                backgroundColor: '#2ecc71',
+                textContent: 'Response: 200 OK',
+                duration: 0.5 
+            });
+            
+            timeline.to(response, { opacity: 1, duration: 0.3 });
+            timeline.to(response, { 
+                right: '670px', 
+                duration: 1.5, 
+                ease: 'power1.inOut',
+                onStart: () => {
+                    addConsoleMessage('> response.ok: true');
+                }
+            });
+            
+            // Process response
+            timeline.to(response, { 
+                opacity: 0, 
+                duration: 0.3,
+                onComplete: () => {
+                    response.remove();
+                    request.remove();
+                }
+            });
+            
+            // Show tooltip for response.json()
+            const jsonTooltip = createTooltip('response.json() parses the JSON response body', 250, 100);
+            
+            timeline.to(jsonTooltip, { 
+                opacity: 1, 
+                duration: 0.5,
+                onStart: () => {
+                    addConsoleMessage('> response.json() parsing response body...');
+                }
+            });
+            
+            // Show successful data
+            timeline.to(jsonTooltip, { 
+                opacity: 0, 
+                duration: 0.5,
+                delay: 1,
+                onComplete: () => {
+                    jsonTooltip.remove();
+                }
+            });
+            
+            timeline.call(() => {
+                addConsoleMessage('> { "success": true, "message": "Data fetched successfully", "data": [...] }', 'console-success');
+                
+                const successTooltip = createTooltip('Everything works as expected because there were no errors', 300, 400);
+                gsap.to(successTooltip, { opacity: 1, duration: 0.5 });
+                
+                setTimeout(() => {
+                    gsap.to(successTooltip, { 
+                        opacity: 0, 
+                        duration: 0.5,
+                        onComplete: () => { successTooltip.remove(); } 
+                    });
+                }, 3000);
+            });
+        }
+        
+        function simulateNetworkError() {
+            clearAnimation();
+            resetConsole();
+            stepIndicator.textContent = 'Simulating network error (server unreachable)';
+            
+            const timeline = gsap.timeline();
+            currentAnimation = timeline;
+            
+            // Create request packet
+            const request = document.createElement('div');
+            request.className = 'request-packet';
+            request.textContent = 'GET';
+            request.style.opacity = 0;
+            animationStage.appendChild(request);
+            
+            // Create status indicator
+            const statusIndicator = createStatusIndicator('Request in progress', '#3498db');
+            
+            // Simulate request
+            timeline.to(statusIndicator, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { 
+                left: '450px', 
+                duration: 1, 
+                ease: 'power1.inOut',
+                onStart: () => {
+                    addConsoleMessage('> fetch("https://api.example.com/data")');
+                }
+            });
+            
+            // Network error occurs
+            timeline.to(request, {
+                opacity: 0,
+                scale: 1.5,
+                duration: 0.3,
+                onComplete: () => {
+                    request.remove();
+                }
+            });
+            
+            timeline.to(statusIndicator, { 
+                backgroundColor: '#e74c3c',
+                textContent: 'Network Error',
+                duration: 0.5 
+            });
+            
+            // Show the error message
+            timeline.call(() => {
+                addConsoleMessage('> Error: Failed to fetch (network error)', 'console-error');
+                
+                const errorTooltip = createTooltip(
+                    '<strong>Problem:</strong> Network errors cause the fetch promise to reject, but there\'s no <code>.catch()</code> to handle it!',
+                    260, 150
+                );
+                
+                gsap.to(errorTooltip, { opacity: 1, duration: 0.5 });
+                
+                setTimeout(() => {
+                    gsap.to(errorTooltip, { 
+                        opacity: 0, 
+                        duration: 0.5,
+                        onComplete: () => { errorTooltip.remove(); } 
+                    });
+                    
+                    const solutionTooltip = createTooltip(
+                        '<strong>Solution:</strong> Add a <code>.catch()</code> handler to properly handle network errors.',
+                        300, 380
+                    );
+                    
+                    gsap.to(solutionTooltip, { opacity: 1, duration: 0.5 });
+                    
+                    setTimeout(() => {
+                        gsap.to(solutionTooltip, { 
+                            opacity: 0, 
+                            duration: 0.5,
+                            onComplete: () => { solutionTooltip.remove(); } 
+                        });
+                    }, 3000);
+                }, 3000);
+            });
+        }
+        
+        function simulateServerError() {
+            clearAnimation();
+            resetConsole();
+            stepIndicator.textContent = 'Simulating server error (404 Not Found)';
+            
+            const timeline = gsap.timeline();
+            currentAnimation = timeline;
+            
+            // Create request packet
+            const request = document.createElement('div');
+            request.className = 'request-packet';
+            request.textContent = 'GET';
+            request.style.opacity = 0;
+            animationStage.appendChild(request);
+            
+            // Create status indicator
+            const statusIndicator = createStatusIndicator('Request in progress', '#3498db');
+            
+            // Simulate request
+            timeline.to(statusIndicator, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { opacity: 1, duration: 0.3 });
+            timeline.to(request, { 
+                left: '670px', 
+                duration: 1.5, 
+                ease: 'power1.inOut',
+                onStart: () => {
+                    addConsoleMessage('> fetch("https://api.example.com/data")');
+                }
+            });
+            
+            // Create error response packet
+            const response = document.createElement('div');
+            response.className = 'error-packet';
+            response.textContent = '404';
+            response.style.opacity = 0;
+            animationStage.appendChild(response);
+            
+            // Server processes and sends error response
+            timeline.to(statusIndicator, { 
+                backgroundColor: '#f39c12',
+                textContent: 'Response: 404 Not Found',
+                duration: 0.5 
+            });
+            
+            timeline.to(response, { opacity: 1, duration: 0.3 });
+            timeline.to(response, { 
+                right: '670px', 
+                duration: 1.5, 
+                ease: 'power1.inOut',
+                onStart: () => {
+                    addConsoleMessage('> response.ok: false');
+                    addConsoleMessage('> response.status: 404');
+                }
+            });
+            
+            // Process response
+            timeline.to(response, { 
+                opacity: 0, 
+                duration: 0.3,
+                onComplete: () => {
+                    response.remove();
+                    request.remove();
+                }
+            });
+            
+            // Show the subtle problem
+            timeline.call(() => {
+                const problemTooltip = createTooltip(
+                    '<strong>Problem:</strong> Even though we got a 404 error, the fetch promise still resolves successfully! <code>response.ok</code> is false, but we\'re not checking it.',
+                    250, 130
+                );
+                
+                gsap.to(problemTooltip, { opacity: 1, duration: 0.5 });
+                
+                // Try to parse JSON from error response
+                addConsoleMessage('> response.json() parsing response body...');
+                
+                setTimeout(() => {
+                    gsap.to(problemTooltip, { 
+                        opacity: 0, 
+                        duration: 0.5,
+                        onComplete: () => { problemTooltip.remove(); } 
+                    });
+                    
+                    // Show JSON parse error
+                    addConsoleMessage('> Uncaught (in promise) SyntaxError: Unexpected token \'N\', "Not Found" is not valid JSON', 'console-error');
+                    
+                    const solutionTooltip = createTooltip(
+                        '<strong>Solution:</strong> Check <code>response.ok</code> property and throw an error if it\'s false, so it can be caught by a <code>.catch()</code> handler.',
+                        300, 380
+                    );
+                    
+                    gsap.to(solutionTooltip, { opacity: 1, duration: 0.5 });
+                    
+                    setTimeout(() => {
+                        gsap.to(solutionTooltip, { 
+                            opacity: 0, 
+                            duration: 0.5,
+                            onComplete: () => { solutionTooltip.remove(); } 
+                        });
+                    }, 3000);
+                }, 3000);
+            });
+        }
+        
+        function showProperHandling() {
+            clearAnimation();
+            resetConsole();
+            stepIndicator.textContent = 'Proper Error Handling Implementation';
+            
+            // Show the improved code
+            solutionCode.style.display = 'block';
+            
+            // Highlight key parts of the solution
+            const improvedCode = solutionCode.innerHTML;
+            const highlightedCode = improvedCode
+                .replace('if (!response.ok) {', '<span class="code-solution">if (!response.ok) {</span>')
+                .replace('throw new Error(`HTTP error! Status: ${response.status}`);', '<span class="code-solution">throw new Error(`HTTP error! Status: ${response.status}`);</span>')
+                .replace('.catch(error => {', '<span class="code-solution">.catch(error => {</span>')
+                .replace('console.error(\'Fetch error:\', error);', '<span class="code-solution">console.error(\'Fetch error:\', error);</span>')
+                .replace('// Handle error appropriately', '<span class="code-solution">// Handle error appropriately</span>');
+            
+            solutionCode.innerHTML = highlightedCode;
+            
+            // Create explanatory tooltips
+            const timeline = gsap.timeline();
+            currentAnimation = timeline;
+            
+            const checkingTooltip = createTooltip(
+                'Check response.ok to catch HTTP error status codes (4xx, 5xx)',
+                120, 350
+            );
+            
+            const catchTooltip = createTooltip(
+                'Add .catch() to handle both network errors and thrown errors from HTTP status checks',
+                260, 350
+            );
+            
+            timeline.to(checkingTooltip, { opacity: 1, duration: 0.5 });
+            timeline.to(catchTooltip, { opacity: 1, duration: 0.5 }, "+=1");
+            
+            timeline.call(() => {
+                addConsoleMessage('> Properly handling both network errors and server errors');
+                addConsoleMessage('> Using .catch() to handle all types of errors in a unified way');
+                addConsoleMessage('> Checking response.ok to detect HTTP error status codes');
+            });
+            
+            timeline.to([checkingTooltip, catchTooltip], { 
+                opacity: 0, 
+                duration: 0.5,
+                delay: 3,
+                onComplete: () => {
+                    checkingTooltip.remove();
+                    catchTooltip.remove();
+                }
+            });
+            
+            timeline.call(() => {
+                const answerTooltip = createTooltip(
+                    '<strong>Answer:</strong> a) Not checking response.ok and not handling network errors; should add .catch() and check response.ok',
+                    300, 380
+                );
+                
+                gsap.to(answerTooltip, { 
+                    opacity: 1, 
+                    duration: 0.5,
+                    backgroundColor: '#27ae60'
+                });
+                
+                setTimeout(() => {
+                    gsap.to(answerTooltip, { 
+                        opacity: 0, 
+                        duration: 0.5,
+                        onComplete: () => { answerTooltip.remove(); } 
+                    });
+                }, 4000);
+            });
+        }
+        
+        function reset() {
+            clearAnimation();
+            resetConsole();
+            stepIndicator.textContent = 'Ready to simulate fetch requests';
+        }
+        
+        // Attach event listeners to buttons
+        successBtn.addEventListener('click', simulateSuccessCase);
+        networkErrorBtn.addEventListener('click', simulateNetworkError);
+        serverErrorBtn.addEventListener('click', simulateServerError);
+        properHandlingBtn.addEventListener('click', showProperHandling);
+        resetBtn.addEventListener('click', reset);
+    </script>
+</body>
+</html>
